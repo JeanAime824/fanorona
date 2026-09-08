@@ -118,9 +118,9 @@ export const GamePage: React.FC = () => {
   }, [handleUndo, handleRedo, handleEndTurn, gameState.captureSequence]);
 
   return (
-    <div className="w-full max-w-5xl mx-auto px-3 sm:px-6 py-4 space-y-4">
+    <div className="w-full px-3 sm:px-4 py-4 space-y-4">
       {/* Top Matchup Header: Joueur Noir VS Joueur Blanc */}
-      <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#141312] border border-white/[0.04]">
+      <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#141312] border border-white/[0.04] mx-auto max-w-7xl">
         <div className="flex items-center gap-2">
           <span className="w-2.5 h-2.5 rounded-full bg-[#1C1A18] border border-[#3A3734]" />
           <span className="text-xs font-serif font-medium text-[#F5F3EE]">
@@ -150,26 +150,27 @@ export const GamePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Main Game Board - Visually Dominant Centerpiece */}
-      <div className="w-full flex flex-col items-center justify-center">
-        <FanoronaBoard
-          gameState={gameState}
-          targetablePositions={targetablePositions}
-          pendingChoice={pendingChoice}
-          theme={settings.theme}
-          pieceTexture={settings.pieceTexture}
-          animationsEnabled={settings.animationsEnabled}
-          onSelectPosition={selectPosition}
-          onResolveChoice={resolveChoice}
-          onCancelChoice={cancelChoice}
-          showCoordinates={true}
-        />
-      </div>
+      {/* Main Layout: Board (left) + History (right) */}
+      <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
+        {/* Left Column: Board + Player Info + Controls */}
+        <div className="lg:col-span-8 flex flex-col gap-4">
+          {/* Board - Visually Dominant Centerpiece */}
+          <div className="w-full flex flex-col items-center justify-center">
+            <FanoronaBoard
+              gameState={gameState}
+              targetablePositions={targetablePositions}
+              pendingChoice={pendingChoice}
+              theme={settings.theme}
+              pieceTexture={settings.pieceTexture}
+              animationsEnabled={settings.animationsEnabled}
+              onSelectPosition={selectPosition}
+              onResolveChoice={resolveChoice}
+              onCancelChoice={cancelChoice}
+              showCoordinates={true}
+            />
+          </div>
 
-      {/* Game Console Below Board: Players, Action Toolbar & Move History */}
-      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
-        {/* Left Column: Player Cards & Primary Actions */}
-        <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-between gap-3">
+          {/* Player Cards - Compact Below Board */}
           <GameStatusPanel
             gameState={gameState}
             isAiThinking={isAiThinking}
@@ -181,6 +182,7 @@ export const GamePage: React.FC = () => {
             onSetTurnTimeLimit={setTurnTimeLimit}
           />
 
+          {/* Controls Bar */}
           <GameControlsBar
             canUndo={canUndo}
             canRedo={canRedo}
@@ -202,8 +204,8 @@ export const GamePage: React.FC = () => {
           />
         </div>
 
-        {/* Right Column: Move History neatly aligned */}
-        <div className="lg:col-span-5 xl:col-span-4 flex flex-col">
+        {/* Right Column: Move History */}
+        <div className="lg:col-span-4 flex flex-col">
           <MoveHistoryPanel history={gameState.moveHistory} />
         </div>
       </div>
