@@ -50,6 +50,7 @@ interface AuthContextType {
   loading: boolean;
   isAuthAvailable: boolean;
   signInWithGoogle: () => Promise<void>;
+  signInWithUsername: (username: string) => Promise<void>;
   logout: () => Promise<void>;
   saveMatchToCloud: (
     gameMode: string,
@@ -71,11 +72,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Load custom local user session on mount
+  useEffect(() => {
+    const savedUser = localStorage.getItem("fanorona_custom_user");
+    if (savedUser) {
+      try {
+        const parsed = JSON.parse(savedUser);
+        setUser(parsed);
+        setLoading(false);
+      } catch (e) {
+        console.warn("Could not parse saved custom user:", e);
+      }
+    }
+  }, []);
+
   // Listen to Firebase auth state
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      setUser(firebaseUser);
-      setLoading(false);
+      // Only set Firebase user if no custom user is logged in
+      const hasCustomUser = localStorage.getItem("fanorona_custom_user");
+      if (!hasCustomUser) {
+        setUser(firebaseUser);
+        setLoading(false);
+      }
 
       if (firebaseUser) {
         // Synchronize user profile into Firestore
@@ -122,12 +141,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const signInWithUsername = async (username: string) => {
+    try {
+      const backendUrl =
+        ((import.meta as any).env && (import.meta as any).env.VITE_BACKEND_URL) ||
+        (typeof window !== "undefined" && window.location.hostname === "localhost"
+          ? "http://localhost:4000"
+          : "");
+
+      const res = await fetch(`${backendUrl}/api/auth/login`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ username }),
+      });
+
+      if (!res.ok) {
+        throw new Error("Erreur de connexion au serveur backend");
+      }
+
+      const data = await res.json();
+      const customUser = data.user as User;
+
+      localStorage.setItem("fanorona_custom_user", JSON.stringify(customUser));
+      setUser(customUser);
+    } catch (err) {
+      console.warn("Backend auth failed, generating local custom user:", err);
+      const cleanName = username.trim() || "Joueur";
+      const localUid = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+      const localUser = {
+        uid: localUid,
+        displayName: cleanName,
+        email: `${cleanName.toLowerCase()}@fanorona.local`,
+        photoURL: "",
+      } as unknown as User;
+
+      localStorage.setItem("fanorona_custom_user", JSON.stringify(localUser));
+      setUser(localUser);
+    }
+  };
+
   const logout = async () => {
+    localStorage.removeItem("fanorona_custom_user");
+    setUser(null);
     try {
       await signOut(auth);
     } catch (error) {
       console.error("Erreur lors de la déconnexion:", error);
-      throw error;
     }
   };
 
@@ -229,6 +288,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         loading,
         isAuthAvailable: true,
         signInWithGoogle,
+        signInWithUsername,
         logout,
         saveMatchToCloud,
         saveStatsToCloud,
