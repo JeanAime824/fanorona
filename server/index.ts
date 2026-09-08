@@ -191,6 +191,23 @@ io.on("connection", (socket: Socket) => {
     });
   });
 
+  // WebRTC Voice Chat Signaling Handlers
+  socket.on("voice_offer", ({ gameId, offer }) => {
+    socket.to(gameId).emit("voice_offer", { offer, senderId: socket.id });
+  });
+
+  socket.on("voice_answer", ({ gameId, answer }) => {
+    socket.to(gameId).emit("voice_answer", { answer, senderId: socket.id });
+  });
+
+  socket.on("voice_candidate", ({ gameId, candidate }) => {
+    socket.to(gameId).emit("voice_candidate", { candidate, senderId: socket.id });
+  });
+
+  socket.on("voice_status", ({ gameId, isMuted, isSpeaking }) => {
+    socket.to(gameId).emit("voice_status", { senderId: socket.id, isMuted, isSpeaking });
+  });
+
   // Disconnect
   socket.on("disconnect", () => {
     console.log(`[Socket.io] Player disconnected: ${socket.id}`);
