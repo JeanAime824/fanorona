@@ -120,7 +120,8 @@ export async function getFriends(userId: string): Promise<FriendshipRecord[]> {
     });
     return friends;
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
+    console.warn("Could not fetch friends list:", error);
+    return [];
   }
 }
 
@@ -145,7 +146,8 @@ export async function getPendingFriendRequests(
     });
     return requests;
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
+    console.warn("Could not fetch pending friend requests:", error);
+    return [];
   }
 }
 
@@ -261,7 +263,8 @@ export async function getPendingChallenges(
     });
     return challenges;
   } catch (error) {
-    handleFirestoreError(error, OperationType.LIST, path);
+    console.warn("Could not fetch pending challenges:", error);
+    return [];
   }
 }
 

@@ -107,8 +107,8 @@ export function useMultiplayer(
     if (!userId) return;
     setState((prev) => ({ ...prev, isLoading: true }));
     try {
-      const friends = await getFriends(userId);
-      const pendingRequests = await getPendingFriendRequests(userId);
+      const friends = (await getFriends(userId)) || [];
+      const pendingRequests = (await getPendingFriendRequests(userId)) || [];
       setState((prev) => ({
         ...prev,
         friends,
@@ -116,10 +116,8 @@ export function useMultiplayer(
         error: null,
       }));
     } catch (error) {
-      setState((prev) => ({
-        ...prev,
-        error: error instanceof Error ? error.message : "Erreur inconnue",
-      }));
+      console.warn("Could not refresh friends list:", error);
+      setState((prev) => ({ ...prev, friends: [], pendingFriendRequests: [] }));
     } finally {
       setState((prev) => ({ ...prev, isLoading: false }));
     }
@@ -130,17 +128,15 @@ export function useMultiplayer(
     if (!userId) return;
     setState((prev) => ({ ...prev, isLoading: true }));
     try {
-      const challenges = await getPendingChallenges(userId);
+      const challenges = (await getPendingChallenges(userId)) || [];
       setState((prev) => ({
         ...prev,
         pendingChallenges: challenges,
         error: null,
       }));
     } catch (error) {
-      setState((prev) => ({
-        ...prev,
-        error: error instanceof Error ? error.message : "Erreur inconnue",
-      }));
+      console.warn("Could not refresh challenges:", error);
+      setState((prev) => ({ ...prev, pendingChallenges: [] }));
     } finally {
       setState((prev) => ({ ...prev, isLoading: false }));
     }
