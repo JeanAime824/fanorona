@@ -6,8 +6,10 @@
 
 import {
   User,
+  getRedirectResult,
   onAuthStateChanged,
   signInWithPopup,
+  signInWithRedirect,
   signOut,
 } from "firebase/auth";
 import {
@@ -99,12 +101,24 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     return () => unsubscribe();
   }, []);
 
+  // Process redirect sign in result on startup
+  useEffect(() => {
+    getRedirectResult(auth).catch((err) => {
+      console.warn("Redirect sign-in result error:", err);
+    });
+  }, []);
+
   const signInWithGoogle = async () => {
     try {
       await signInWithPopup(auth, googleProvider);
-    } catch (error) {
-      console.error("Erreur lors de la connexion Google:", error);
-      throw error;
+    } catch (error: any) {
+      console.warn("Popup sign in failed or blocked, falling back to redirect:", error);
+      try {
+        await signInWithRedirect(auth, googleProvider);
+      } catch (redirectError) {
+        console.error("Erreur lors de la connexion Google par redirection:", redirectError);
+        throw redirectError;
+      }
     }
   };
 
