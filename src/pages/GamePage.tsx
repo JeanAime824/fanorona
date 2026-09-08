@@ -118,29 +118,39 @@ export const GamePage: React.FC = () => {
   }, [handleUndo, handleRedo, handleEndTurn, gameState.captureSequence]);
 
   return (
-    <div className="w-[90%] max-w-[90vw] mx-auto px-1 sm:px-3 py-3 sm:py-5 space-y-4">
-      {/* Top Toolbar */}
-      <GameControlsBar
-        canUndo={canUndo}
-        canRedo={canRedo}
-        onUndo={handleUndo}
-        onRedo={handleRedo}
-        onResign={() => setIsResignConfirmOpen(true)}
-        onNewGame={() => setIsNewGameOpen(true)}
-        isGameOver={gameState.status === "game_over"}
-        speedModeEnabled={settings.speedModeEnabled}
-        turnTimeLimit={settings.turnTimeLimit}
-        onToggleSpeedMode={toggleSpeedMode}
-        onShowVictory={() => {
-          if (gameState.winner && gameState.winner !== "draw") {
-            setIsVictoryOverlayOpen(true);
-          } else {
-            setIsGameOverModalOpen(true);
-          }
-        }}
-      />
+    <div className="w-full max-w-5xl mx-auto px-3 sm:px-6 py-4 space-y-4">
+      {/* Top Matchup Header: Joueur Noir VS Joueur Blanc */}
+      <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#141312] border border-white/[0.04]">
+        <div className="flex items-center gap-2">
+          <span className="w-2.5 h-2.5 rounded-full bg-[#1C1A18] border border-[#3A3734]" />
+          <span className="text-xs font-serif font-medium text-[#F5F3EE]">
+            {gameState.gameMode === "ai" && gameState.aiPlayerColor === "black"
+              ? "IA (Noir)"
+              : settings.playerNameBlack?.trim() || "Joueur Noir"}
+          </span>
+          {!gameState.currentPlayer.startsWith("w") && gameState.status === "playing" && (
+            <span className="w-1.5 h-1.5 rounded-full bg-[#C8A452]" />
+          )}
+        </div>
 
-      {/* Main Game Board - Occupies 95% of Screen */}
+        <div className="text-[10px] font-mono tracking-widest text-[#6B655E] uppercase font-semibold">
+          VS
+        </div>
+
+        <div className="flex items-center gap-2">
+          {gameState.currentPlayer === "white" && gameState.status === "playing" && (
+            <span className="w-1.5 h-1.5 rounded-full bg-[#C8A452]" />
+          )}
+          <span className="text-xs font-serif font-medium text-[#F5F3EE]">
+            {gameState.gameMode === "ai" && gameState.aiPlayerColor === "white"
+              ? "IA (Blanc)"
+              : settings.playerNameWhite?.trim() || "Joueur Blanc"}
+          </span>
+          <span className="w-2.5 h-2.5 rounded-full bg-[#EDE8DE] border border-[#CCC4B4]" />
+        </div>
+      </div>
+
+      {/* Main Game Board - Visually Dominant Centerpiece */}
       <div className="w-full flex flex-col items-center justify-center">
         <FanoronaBoard
           gameState={gameState}
@@ -156,9 +166,10 @@ export const GamePage: React.FC = () => {
         />
       </div>
 
-      {/* Secondary Panels Below the Board: Status & Move History */}
-      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
-        <div className="lg:col-span-7 xl:col-span-8">
+      {/* Game Console Below Board: Players, Action Toolbar & Move History */}
+      <div className="w-full grid grid-cols-1 lg:grid-cols-12 gap-3.5 sm:gap-4 items-stretch">
+        {/* Left Column: Player Cards & Primary Actions */}
+        <div className="lg:col-span-7 xl:col-span-8 flex flex-col justify-between gap-3">
           <GameStatusPanel
             gameState={gameState}
             isAiThinking={isAiThinking}
@@ -169,9 +180,30 @@ export const GamePage: React.FC = () => {
             onToggleSpeedMode={toggleSpeedMode}
             onSetTurnTimeLimit={setTurnTimeLimit}
           />
+
+          <GameControlsBar
+            canUndo={canUndo}
+            canRedo={canRedo}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            onResign={() => setIsResignConfirmOpen(true)}
+            onNewGame={() => setIsNewGameOpen(true)}
+            isGameOver={gameState.status === "game_over"}
+            speedModeEnabled={settings.speedModeEnabled}
+            turnTimeLimit={settings.turnTimeLimit}
+            onToggleSpeedMode={toggleSpeedMode}
+            onShowVictory={() => {
+              if (gameState.winner && gameState.winner !== "draw") {
+                setIsVictoryOverlayOpen(true);
+              } else {
+                setIsGameOverModalOpen(true);
+              }
+            }}
+          />
         </div>
 
-        <div className="lg:col-span-5 xl:col-span-4">
+        {/* Right Column: Move History neatly aligned */}
+        <div className="lg:col-span-5 xl:col-span-4 flex flex-col">
           <MoveHistoryPanel history={gameState.moveHistory} />
         </div>
       </div>

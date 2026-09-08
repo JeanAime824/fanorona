@@ -21,25 +21,25 @@ export const Button: React.FC<ButtonProps> = ({
   ...props
 }) => {
   const baseStyles =
-    "inline-flex items-center justify-center font-medium tracking-wide rounded-lg transition-all duration-150 select-none cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#D4AF37] focus:ring-offset-[#0A0A0A] disabled:opacity-30 disabled:cursor-not-allowed active:scale-[0.98]";
+    "inline-flex items-center justify-center font-medium tracking-wide rounded-lg transition-colors duration-150 select-none cursor-pointer focus:outline-none focus:ring-1 focus:ring-[#C8A452] disabled:opacity-35 disabled:cursor-not-allowed active:scale-[0.99]";
 
   const sizeStyles = {
-    sm: "px-3 py-1.5 text-xs gap-1.5",
-    md: "px-4 py-2 text-xs uppercase tracking-widest font-bold gap-2",
-    lg: "px-6 py-3 text-sm uppercase tracking-widest font-bold gap-2.5",
+    sm: "px-2.5 py-1.5 text-xs gap-1.5",
+    md: "px-3.5 py-2 text-xs tracking-wider uppercase font-semibold gap-2",
+    lg: "px-5 py-2.5 text-sm tracking-wider uppercase font-semibold gap-2.5",
   };
 
   const variantStyles = {
     primary:
-      "bg-[#D4AF37] text-black hover:bg-[#C19B2D] border border-[#D4AF37] shadow-[0_0_15px_rgba(212,175,55,0.25)] font-bold",
+      "bg-[#C8A452] text-[#121110] hover:bg-[#D5B364] border border-[#C8A452] font-semibold",
     secondary:
-      "bg-white/5 hover:bg-white/10 text-white/90 border border-white/10 shadow-sm",
+      "bg-white/[0.05] hover:bg-white/[0.09] text-[#F5F3EE] border border-white/[0.08]",
     danger:
-      "bg-red-500/15 hover:bg-red-500/25 text-red-300 border border-red-500/30 shadow-sm",
+      "bg-red-500/10 hover:bg-red-500/20 text-red-300 border border-red-500/20",
     outline:
-      "bg-transparent hover:bg-[#D4AF37]/10 text-[#D4AF37] border border-[#D4AF37]/40",
+      "bg-transparent hover:bg-white/[0.05] text-[#F5F3EE] border border-white/[0.15]",
     ghost:
-      "bg-transparent hover:bg-white/5 text-white/60 hover:text-white",
+      "bg-transparent hover:bg-white/[0.05] text-[#9E9890] hover:text-[#F5F3EE]",
   };
 
   return (

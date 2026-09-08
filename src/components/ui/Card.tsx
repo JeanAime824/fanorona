@@ -16,9 +16,9 @@ export const Card: React.FC<CardProps> = ({
   ...props
 }) => {
   const variantStyles = {
-    default: "bg-[#0D0D0D] border border-white/10",
-    elevated: "bg-[#121212] border border-white/10 shadow-2xl shadow-black/90",
-    accent: "bg-[#141414] border border-[#D4AF37]/30 shadow-lg shadow-[#D4AF37]/5",
+    default: "bg-[#161514] border border-white/[0.06]",
+    elevated: "bg-[#181615] border border-white/[0.08] shadow-lg shadow-black/60",
+    accent: "bg-[#181615] border border-[#C8A452]/25 shadow-sm",
   };
 
   return (

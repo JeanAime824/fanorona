@@ -35,14 +35,14 @@ export const GameControlsBar: React.FC<GameControlsBarProps> = ({
   onShowVictory,
 }) => {
   return (
-    <div className="w-full flex flex-wrap items-center justify-between gap-2.5 p-3 bg-[#141210] border border-[#2E241C] rounded-2xl shadow-xl">
-      {/* Primary Actions: New Game & Speed Mode toggle */}
+    <div className="w-full flex flex-wrap items-center justify-between gap-3 px-4 py-2.5 bg-[#161514] border border-white/[0.06] rounded-xl">
+      {/* Primary Action: + Nouvelle partie & Speed mode secondary toggle */}
       <div className="flex items-center gap-2">
         <Button
           size="sm"
           variant="primary"
           onClick={onNewGame}
-          icon={<PlusCircle className="w-4 h-4" />}
+          icon={<PlusCircle className="w-3.5 h-3.5" />}
         >
           Nouvelle partie
         </Button>
@@ -51,30 +51,30 @@ export const GameControlsBar: React.FC<GameControlsBarProps> = ({
           <button
             type="button"
             onClick={onToggleSpeedMode}
-            className={`px-2.5 py-1.5 rounded-xl text-xs font-semibold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 ${
+            className={`px-2 py-1 rounded-md text-[11px] font-medium transition-colors cursor-pointer flex items-center gap-1.5 ${
               speedModeEnabled
-                ? "bg-[#D4AF37]/20 border border-[#D4AF37] text-[#D4AF37] shadow-sm shadow-[#D4AF37]/10"
-                : "bg-white/5 hover:bg-white/10 text-white/50 hover:text-white/80 border border-white/10"
+                ? "bg-[#C8A452]/15 text-[#C8A452] border border-[#C8A452]/30"
+                : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04] border border-transparent"
             }`}
-            title={speedModeEnabled ? `Mode Vitesse actif (${turnTimeLimit}s par coup)` : "Activer le Mode Vitesse"}
+            title={speedModeEnabled ? `Mode Vitesse actif (${turnTimeLimit}s)` : "Activer le chronomètre"}
           >
-            <Zap className={`w-3.5 h-3.5 ${speedModeEnabled ? "fill-current text-[#D4AF37]" : ""}`} />
+            <Zap className={`w-3 h-3 ${speedModeEnabled ? "text-[#C8A452]" : "text-[#9E9890]"}`} />
             <span className="hidden sm:inline">
-              {speedModeEnabled ? `Vitesse (${turnTimeLimit}s)` : "Vitesse"}
+              {speedModeEnabled ? `${turnTimeLimit}s` : "Vitesse"}
             </span>
           </button>
         )}
       </div>
 
-      {/* Secondary Controls: Undo, Redo, Resign */}
+      {/* Secondary Actions: Undo, Redo, and Resign */}
       <div className="flex items-center gap-1.5 sm:gap-2">
         <Button
           size="sm"
           variant="secondary"
           onClick={onUndo}
           disabled={!canUndo}
-          icon={<Undo2 className="w-4 h-4" />}
-          title="Annuler le dernier coup (Ctrl+Z)"
+          icon={<Undo2 className="w-3.5 h-3.5" />}
+          title="Annuler le coup (Ctrl+Z)"
         >
           <span className="hidden sm:inline">Annuler</span>
         </Button>
@@ -84,31 +84,30 @@ export const GameControlsBar: React.FC<GameControlsBarProps> = ({
           variant="secondary"
           onClick={onRedo}
           disabled={!canRedo}
-          icon={<Redo2 className="w-4 h-4" />}
+          icon={<Redo2 className="w-3.5 h-3.5" />}
           title="Rétablir le coup (Ctrl+Y)"
         >
           <span className="hidden sm:inline">Rétablir</span>
         </Button>
 
         {!isGameOver ? (
-          <Button
-            size="sm"
-            variant="ghost"
+          <button
+            type="button"
             onClick={onResign}
-            icon={<Flag className="w-4 h-4 text-white/40 hover:text-red-400" />}
+            className="px-2.5 py-1.5 rounded-lg text-xs font-medium text-[#9E9890] hover:text-red-400 hover:bg-red-500/10 transition-colors flex items-center gap-1.5 cursor-pointer ml-1"
             title="Déclarer forfait"
           >
+            <Flag className="w-3.5 h-3.5 opacity-60 hover:opacity-100" />
             <span className="hidden md:inline">Abandonner</span>
-          </Button>
+          </button>
         ) : (
           onShowVictory && (
             <Button
               size="sm"
               variant="outline"
               onClick={onShowVictory}
-              icon={<Trophy className="w-4 h-4 text-[#D4AF37]" />}
-              className="border-[#D4AF37]/40 text-[#D4AF37] hover:bg-[#D4AF37]/10"
-              title="Afficher les résultats de fin de partie"
+              icon={<Trophy className="w-3.5 h-3.5 text-[#C8A452]" />}
+              title="Résultats de la partie"
             >
               <span className="hidden sm:inline">Résultats</span>
             </Button>

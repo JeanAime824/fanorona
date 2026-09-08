@@ -123,11 +123,23 @@ export const BoardIntersection: React.FC<BoardIntersectionProps> = React.memo(({
       {/* Pending Capture Choice Candidate Floating Indicator */}
       {isPendingCaptureSide && (
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
-          {/* Pulsing ring aura */}
-          <div className={`absolute w-11 h-11 sm:w-13 sm:h-13 md:w-15 md:h-15 lg:w-18 lg:h-18 xl:w-22 xl:h-22 rounded-full border-2 ${themeDef.indicators.captureDestinationRing} animate-pulse`} />
-          {/* Badge */}
-          <div className={`absolute -top-3.5 sm:-top-4 md:-top-5 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-md ${themeDef.indicators.choiceBadgeBg} ${themeDef.indicators.choiceBadgeText} text-[9px] sm:text-[10px] md:text-xs font-serif font-bold tracking-tight shadow-[0_2px_8px_rgba(0,0,0,0.9)] flex items-center gap-1 whitespace-nowrap animate-bounce`}>
-            <span>🎯 Chasser</span>
+          {/* Subtle glowing ring aura */}
+          <div
+            className={`absolute w-10 h-10 sm:w-12 sm:h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 rounded-full border-2 ${
+              isPendingCaptureSide === "approach"
+                ? "border-[#C8A452] bg-[#C8A452]/10"
+                : "border-[#D99B43] bg-[#D99B43]/10"
+            } transition-all duration-200`}
+          />
+          {/* Discreet label badge */}
+          <div
+            className={`absolute -top-3 sm:-top-3.5 px-1.5 py-0.5 rounded text-[8px] sm:text-[9px] md:text-[10px] font-serif font-semibold tracking-tight shadow-md flex items-center gap-1 whitespace-nowrap ${
+              isPendingCaptureSide === "approach"
+                ? "bg-[#C8A452] text-[#121110]"
+                : "bg-[#D99B43] text-[#121110]"
+            }`}
+          >
+            <span>{isPendingCaptureSide === "approach" ? "Tomboky" : "Faly"}</span>
           </div>
         </div>
       )}

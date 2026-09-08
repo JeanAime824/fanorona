@@ -96,59 +96,6 @@ export const FanoronaBoard: React.FC<FanoronaBoardProps> = ({
 
   return (
     <div className="relative w-full mx-auto select-none">
-      {/* Interactive Selection Banner: Choosing Which Side to Hunt */}
-      {pendingChoice && (
-        <div className="mb-3 p-3 sm:p-3.5 rounded-2xl bg-[#141210]/95 border border-[#D4AF37]/50 shadow-[0_12px_32px_rgba(0,0,0,0.85)] backdrop-blur-md flex flex-wrap items-center justify-between gap-3 animate-fadeIn">
-          <div className="flex items-center gap-2.5 text-xs text-white">
-            <span className="flex h-6 w-6 items-center justify-center rounded-full bg-[#D4AF37]/20 text-[#D4AF37]">
-              <Crosshair className="w-3.5 h-3.5 animate-spin-slow" />
-            </span>
-            <div>
-              <div className="font-serif font-bold text-[#D4AF37] uppercase tracking-wider text-[11px] sm:text-xs">
-                Chasser de quel côté ?
-              </div>
-              <div className="text-white/60 text-[11px]">
-                Cliquez directement sur les pièces cibles du plateau ou choisissez ci-contre :
-              </div>
-            </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <button
-              type="button"
-              onClick={() => onResolveChoice?.("approach")}
-              className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37] text-xs font-serif font-bold text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition-all cursor-pointer flex items-center gap-2 shadow-[0_2px_8px_rgba(212,175,55,0.25)] hover:scale-105 active:scale-95"
-            >
-              <ArrowUpRight className="w-4 h-4" />
-              <span>
-                Devant (+{pendingChoice.approachMove.captures.length}{" "}
-                {pendingChoice.approachMove.captures.length > 1 ? "pièces" : "pièce"})
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={() => onResolveChoice?.("withdrawal")}
-              className="px-3 sm:px-3.5 py-1.5 rounded-xl bg-[#D4AF37]/15 border border-[#D4AF37] text-xs font-serif font-bold text-[#D4AF37] hover:bg-[#D4AF37] hover:text-black transition-all cursor-pointer flex items-center gap-2 shadow-[0_2px_8px_rgba(212,175,55,0.25)] hover:scale-105 active:scale-95"
-            >
-              <ArrowDownLeft className="w-4 h-4" />
-              <span>
-                Derrière (+{pendingChoice.withdrawalMove.captures.length}{" "}
-                {pendingChoice.withdrawalMove.captures.length > 1 ? "pièces" : "pièce"})
-              </span>
-            </button>
-            <button
-              type="button"
-              onClick={onCancelChoice}
-              className="p-1.5 rounded-lg bg-white/5 hover:bg-white/10 text-white/50 hover:text-white transition-colors cursor-pointer"
-              title="Annuler"
-              aria-label="Annuler"
-            >
-              <X className="w-4 h-4" />
-            </button>
-          </div>
-        </div>
-      )}
-
       {/* Board Frame with Selected Theme Finish */}
       <div
         className={`relative w-full rounded-2xl sm:rounded-3xl p-3 sm:p-5 transition-all duration-300 ${themeDef.frameClass}`}
@@ -204,7 +151,23 @@ export const FanoronaBoard: React.FC<FanoronaBoardProps> = ({
                     isPendingDestination={isPendingDest}
                     isPendingOrigin={isPendingOrig}
                     theme={theme}
-                    onClick={onSelectPosition}
+                    onClick={(clickedPos) => {
+                      if (pendingChoice) {
+                        if (isApproachCandidate) {
+                          onResolveChoice?.("approach");
+                          return;
+                        }
+                        if (isWithdrawalCandidate) {
+                          onResolveChoice?.("withdrawal");
+                          return;
+                        }
+                        if (isPendingOrig) {
+                          onCancelChoice?.();
+                          return;
+                        }
+                      }
+                      onSelectPosition(clickedPos);
+                    }}
                   />
                 );
               })
@@ -257,6 +220,85 @@ export const FanoronaBoard: React.FC<FanoronaBoardProps> = ({
               );
             })}
           </div>
+
+          {/* Elegant Floating Capture Direction Overlay */}
+          {pendingChoice && (
+            <div className="absolute inset-0 z-40 bg-black/65 backdrop-blur-[2px] flex items-center justify-center p-3 sm:p-6 animate-fadeIn">
+              <div className="w-full max-w-md bg-[#181615] border border-[#C8A452]/40 rounded-2xl shadow-2xl p-4 sm:p-5 text-center space-y-4">
+                <div className="space-y-1">
+                  <div className="flex items-center justify-center gap-2 text-xs font-serif font-semibold text-[#C8A452] uppercase tracking-wider">
+                    <Crosshair className="w-4 h-4 text-[#C8A452]" />
+                    <span>Sens de la capture</span>
+                  </div>
+                  <p className="text-xs text-[#9E9890] max-w-xs mx-auto leading-relaxed">
+                    Ce coup permet deux modes de capture. Choisissez la ligne d'adversaires à capturer :
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  {/* Option 1: Tomboky (Approche) */}
+                  <button
+                    type="button"
+                    onClick={() => onResolveChoice?.("approach")}
+                    className="group p-3 rounded-xl bg-[#141312] hover:bg-[#1E1C1A] border border-[#C8A452]/30 hover:border-[#C8A452] transition-all text-left cursor-pointer flex flex-col justify-between gap-2.5 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-[#C8A452]/15 text-[#C8A452] flex items-center justify-center text-xs">
+                          <ArrowUpRight className="w-3 h-3" />
+                        </span>
+                        <span className="font-serif font-bold text-xs sm:text-sm text-[#F5F3EE]">
+                          Tomboky
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#C8A452]/20 text-[#C8A452]">
+                        +{pendingChoice.approachMove.captures.length}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-[#9E9890] leading-snug">
+                      Capture par <strong className="text-[#F5F3EE]">approche</strong> (vers l'avant).
+                    </div>
+                  </button>
+
+                  {/* Option 2: Faly (Retrait) */}
+                  <button
+                    type="button"
+                    onClick={() => onResolveChoice?.("withdrawal")}
+                    className="group p-3 rounded-xl bg-[#141312] hover:bg-[#1E1C1A] border border-[#D99B43]/30 hover:border-[#D99B43] transition-all text-left cursor-pointer flex flex-col justify-between gap-2.5 shadow-sm"
+                  >
+                    <div className="flex items-start justify-between">
+                      <div className="flex items-center gap-1.5">
+                        <span className="w-5 h-5 rounded-full bg-[#D99B43]/15 text-[#D99B43] flex items-center justify-center text-xs">
+                          <ArrowDownLeft className="w-3 h-3" />
+                        </span>
+                        <span className="font-serif font-bold text-xs sm:text-sm text-[#F5F3EE]">
+                          Faly
+                        </span>
+                      </div>
+                      <span className="text-[10px] font-semibold px-1.5 py-0.5 rounded-full bg-[#D99B43]/20 text-[#D99B43]">
+                        +{pendingChoice.withdrawalMove.captures.length}
+                      </span>
+                    </div>
+                    <div className="text-[10px] text-[#9E9890] leading-snug">
+                      Capture par <strong className="text-[#F5F3EE]">retrait</strong> (vers l'arrière).
+                    </div>
+                  </button>
+                </div>
+
+                {/* Cancel Move Button */}
+                <div className="flex items-center justify-center pt-0.5">
+                  <button
+                    type="button"
+                    onClick={onCancelChoice}
+                    className="px-3 py-1 rounded-lg text-[11px] text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04] transition-colors cursor-pointer flex items-center gap-1.5"
+                  >
+                    <X className="w-3 h-3" />
+                    <span>Annuler le déplacement</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>

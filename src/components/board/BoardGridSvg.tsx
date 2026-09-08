@@ -111,18 +111,12 @@ export const BoardGridSvg: React.FC<BoardGridSvgProps> = ({ theme }) => {
           />
         </pattern>
 
-        {/* Deep incised groove shadow for hand-carved look */}
+        {/* Subtle, natural incised groove shadow for hand-carved look */}
         <filter id="woodCarve" x="-5%" y="-5%" width="110%" height="110%">
-          <feDropShadow dx="0" dy="1.5" stdDeviation="1" floodColor="#000000" floodOpacity="0.9" />
-          <feDropShadow dx="0" dy="-0.5" stdDeviation="0.5" floodColor="rgba(255,255,255,0.08)" floodOpacity="1" />
+          <feDropShadow dx="0" dy="1" stdDeviation="0.5" floodColor="#000000" floodOpacity="0.75" />
         </filter>
 
-        {/*
-          Regal Gold linear gradient for lattice lines.
-          CRITICAL: Uses gradientUnits="userSpaceOnUse" so that pure horizontal lines (height=0)
-          and pure vertical lines (width=0) do NOT produce degenerate bounding boxes and remain
-          fully visible across all browsers.
-        */}
+        {/* Crisp etched warm gold gradient for lattice lines */}
         <linearGradient
           id="goldGridGrad"
           gradientUnits="userSpaceOnUse"
@@ -131,30 +125,28 @@ export const BoardGridSvg: React.FC<BoardGridSvgProps> = ({ theme }) => {
           x2={maxX}
           y2={maxY}
         >
-          <stop offset="0%" stopColor="#C49B30" />
-          <stop offset="25%" stopColor="#E6CF78" />
-          <stop offset="50%" stopColor="#D4AF37" />
-          <stop offset="75%" stopColor="#E6CF78" />
-          <stop offset="100%" stopColor="#C49B30" />
+          <stop offset="0%" stopColor="#B38A3A" />
+          <stop offset="50%" stopColor="#C8A452" />
+          <stop offset="100%" stopColor="#B38A3A" />
         </linearGradient>
       </defs>
 
-      {/* SVG Wood Micrograin Overlay */}
+      {/* SVG Subtle Wood Micrograin */}
       {themeDef.grid.hasWoodGrainPattern && (
-        <rect width="100%" height="100%" fill="url(#svgWoodGrain)" opacity="0.8" />
+        <rect width="100%" height="100%" fill="url(#svgWoodGrain)" opacity="0.4" />
       )}
 
-      {/* Outer board inlay frame with beveled border */}
+      {/* Outer board inlay frame */}
       <rect
         x={MARGIN_X - 16}
         y={MARGIN_Y - 16}
         width={BOARD_SVG_WIDTH - 2 * MARGIN_X + 32}
         height={BOARD_SVG_HEIGHT - 2 * MARGIN_Y + 32}
-        rx="10"
+        rx="8"
         fill="none"
-        stroke={themeDef.grid.outerFrameStroke}
-        strokeWidth="1.8"
-        opacity="0.45"
+        stroke="#C8A452"
+        strokeWidth="1"
+        opacity="0.25"
       />
       <rect
         x={MARGIN_X - 20}

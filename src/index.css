@@ -2,19 +2,35 @@
 
 @layer base {
   :root {
-    --font-display: 'Cinzel', 'Outfit', serif;
+    --font-display: 'Cinzel', serif;
     --font-serif: 'Cinzel', serif;
     --font-body: 'Plus Jakarta Sans', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    
+    /* Core Sophisticated Palette */
+    --color-charcoal-bg: #121110;
+    --color-surface-base: #171615;
+    --color-surface-elevated: #1D1B19;
+    --color-surface-border: rgba(255, 255, 255, 0.07);
+    --color-gold-accent: #C8A452;
+    --color-gold-muted: rgba(200, 164, 82, 0.2);
+    --color-text-ivory: #F5F3EE;
+    --color-text-muted: #9E9890;
+    --color-text-dim: #6B655E;
+    --color-wood-frame: #24160F;
+    --color-wood-surface: #2E1B13;
   }
 
   body {
     font-family: var(--font-body);
-    background-color: #0A0A0A;
-    color: #E6E6E6;
+    background-color: var(--color-charcoal-bg);
+    color: var(--color-text-ivory);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
   }
 
   h1, h2, h3, h4, .font-display {
     font-family: var(--font-display);
+    letter-spacing: 0.04em;
   }
 
   .font-serif {
@@ -22,70 +38,67 @@
   }
 }
 
-/* Authentic Malagasy Palissandre / Rosewood Board Texture */
+/* Authentic, Natural Malagasy Palissandre (Rosewood) Board Texture - Subtle, Natural, Non-AI */
 .bg-board-wood {
-  background-color: #24140D;
+  background-color: #26160F;
   background-image:
-    /* Top satin varnish luster */
-    radial-gradient(ellipse at 50% 30%, rgba(212, 175, 55, 0.08) 0%, transparent 65%),
-    /* Longitudinal hardwood fiber striations */
+    /* Delicate natural grain striations */
     repeating-linear-gradient(
       90deg,
-      rgba(24, 13, 8, 0.98) 0px,
-      rgba(38, 20, 13, 0.95) 6px,
-      rgba(52, 28, 18, 0.97) 14px,
-      rgba(33, 18, 11, 0.98) 22px,
-      rgba(20, 10, 6, 0.99) 32px,
-      rgba(48, 26, 17, 0.94) 44px,
-      rgba(30, 16, 10, 0.96) 58px,
-      rgba(25, 13, 8, 0.98) 72px,
-      rgba(42, 23, 15, 0.95) 86px,
-      rgba(19, 10, 6, 0.99) 100px
+      rgba(20, 11, 7, 0.95) 0px,
+      rgba(35, 19, 12, 0.90) 8px,
+      rgba(45, 24, 16, 0.92) 20px,
+      rgba(26, 14, 9, 0.96) 36px,
+      rgba(42, 23, 15, 0.91) 54px,
+      rgba(24, 13, 8, 0.95) 78px
     ),
-    /* Organic transverse wood rings */
+    /* Organic transverse wood growth rings */
     repeating-linear-gradient(
       0deg,
-      rgba(0, 0, 0, 0.15) 0px,
-      rgba(255, 255, 255, 0.015) 2px,
-      transparent 4px,
-      rgba(0, 0, 0, 0.10) 7px
+      rgba(0, 0, 0, 0.08) 0px,
+      rgba(255, 255, 255, 0.01) 2px,
+      transparent 5px
     );
-  box-shadow: inset 0 0 50px rgba(0, 0, 0, 0.85);
+  box-shadow: inset 0 0 30px rgba(0, 0, 0, 0.7);
 }
 
+/* Subtle, authentic beveled wood frame */
 .wood-frame {
-  background: linear-gradient(145deg, #382015 0%, #24140D 50%, #170C07 100%);
-  border: 1px solid rgba(212, 175, 55, 0.25);
+  background: linear-gradient(145deg, #301C13 0%, #22140D 60%, #170C08 100%);
+  border: 1px solid rgba(200, 164, 82, 0.2);
   box-shadow:
-    inset 0 1px 2px rgba(255, 255, 255, 0.15),
-    inset 0 -2px 5px rgba(0, 0, 0, 0.8),
-    0 16px 40px -8px rgba(0, 0, 0, 0.85),
-    0 4px 12px rgba(0, 0, 0, 0.5);
+    inset 0 1px 1px rgba(255, 255, 255, 0.12),
+    inset 0 -2px 4px rgba(0, 0, 0, 0.6),
+    0 12px 32px -6px rgba(0, 0, 0, 0.65);
 }
 
-/* Subtle Malagasy Gold Motif Pattern */
-.gold-grid-pattern {
-  background-image: radial-gradient(#D4AF37 1px, transparent 1px);
-  background-size: 32px 32px;
+/* Discreet Malagasy Aloalo geometric motif line */
+.malagasy-border-subtle {
+  background-image: repeating-linear-gradient(
+    45deg,
+    rgba(200, 164, 82, 0.15) 0,
+    rgba(200, 164, 82, 0.15) 2px,
+    transparent 2px,
+    transparent 8px
+  );
 }
 
-/* Smooth custom scrollbars in deep dark & gold */
+/* Smooth unobtrusive scrollbars */
 ::-webkit-scrollbar {
-  width: 6px;
-  height: 6px;
+  width: 5px;
+  height: 5px;
 }
 
 ::-webkit-scrollbar-track {
-  background: #0D0D0D;
+  background: #141312;
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #262626;
-  border-radius: 9999px;
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  background: #2C2926;
+  border-radius: 4px;
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #D4AF37;
+  background: #C8A452;
 }
 

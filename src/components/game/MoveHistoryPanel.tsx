@@ -22,68 +22,68 @@ export const MoveHistoryPanel: React.FC<MoveHistoryPanelProps> = ({ history }) =
   }, [history]);
 
   return (
-    <div className="w-full bg-[#141210] border border-[#2E241C] rounded-2xl p-4 shadow-xl flex flex-col h-64 sm:h-80">
+    <div className="w-full bg-[#161514] border border-white/[0.06] rounded-xl p-3.5 flex flex-col h-full min-h-[220px] max-h-[340px] lg:max-h-none">
       {/* Header */}
-      <div className="flex items-center justify-between pb-3 mb-2 border-b border-[#2E241C]">
-        <div className="flex items-center gap-2 text-xs font-serif font-bold tracking-widest text-[#D4AF37] uppercase">
-          <History className="w-4 h-4 text-[#D4AF37]" />
-          <span>Historique des coups</span>
+      <div className="flex items-center justify-between pb-2.5 mb-2 border-b border-white/[0.06]">
+        <div className="flex items-center gap-2 text-xs font-serif font-semibold tracking-wider text-[#F5F3EE] uppercase">
+          <History className="w-3.5 h-3.5 text-[#C8A452]" />
+          <span>Historique</span>
         </div>
-        <span className="text-[11px] text-white/40">
-          {history.length} coup{history.length !== 1 ? "s" : ""}
+        <span className="text-[11px] font-mono text-[#9E9890]">
+          {history.length} coup{history.length > 1 ? "s" : ""}
         </span>
       </div>
 
-      {/* Moves list */}
+      {/* Compact moves list */}
       <div
         ref={scrollRef}
-        className="flex-1 overflow-y-auto space-y-1.5 pr-1"
+        className="flex-1 overflow-y-auto space-y-1 pr-1 font-mono text-xs"
       >
         {history.length === 0 ? (
-          <div className="h-full flex flex-col items-center justify-center text-xs text-white/30 italic">
-            Aucun coup joué pour le moment.
+          <div className="h-full flex items-center justify-center text-xs text-[#9E9890]/60 italic">
+            Partie en attente du premier coup.
           </div>
         ) : (
           history.map((record, idx) => {
             const isCapture = record.captures.length > 0;
             const isWhite = record.player === "white";
+            const isLatest = idx === history.length - 1;
+            const moveNumber = String(idx + 1).padStart(2, "0");
 
             return (
               <div
                 key={record.id || idx}
-                className="flex items-center justify-between p-2 rounded-xl bg-[#1A1612] border border-[#2E241C]/60 text-xs hover:bg-white/5 transition-colors"
+                className={`flex items-center justify-between px-2.5 py-1.5 rounded-md transition-colors ${
+                  isLatest
+                    ? "bg-white/[0.06] text-[#F5F3EE] border border-[#C8A452]/30"
+                    : "text-[#9E9890] hover:bg-white/[0.02]"
+                }`}
               >
-                <div className="flex items-center gap-2">
-                  <span className="text-white/30 font-mono w-5">
-                    {idx + 1}.
+                <div className="flex items-center gap-2.5">
+                  <span className="text-[#6B655E] text-[11px] w-5">
+                    {moveNumber}
                   </span>
-                  <div
-                    className={`w-3.5 h-3.5 rounded-full border shadow-xs shrink-0 ${
+                  {/* Subtle piece stone dot */}
+                  <span
+                    className={`inline-block w-2.5 h-2.5 rounded-full ${
                       isWhite
-                        ? "bg-gradient-to-br from-white to-[#D5D0C0] border-[#E8E8E0]"
-                        : "bg-gradient-to-br from-[#38332C] to-[#0A0908] border-[#33302C]"
+                        ? "bg-[#EDE8DE] border border-[#CCC4B4]"
+                        : "bg-[#1C1A18] border border-[#3A3734]"
                     }`}
                   />
-                  <span className="font-mono font-medium text-white/90">
+                  <span className="text-xs font-sans font-medium text-[#F5F3EE]/90">
+                    {isWhite ? "Blanc" : "Noir"}
+                  </span>
+                  <span className="text-xs font-mono font-medium text-[#F5F3EE] tracking-tight">
                     {record.notation}
                   </span>
                 </div>
 
-                <div className="flex items-center gap-1.5">
-                  {isCapture ? (
-                    <Badge variant="primary" size="sm">
-                      <Swords className="w-2.5 h-2.5" />
-                      <span>
-                        {record.captureType === "approach" ? "Tomboky" : "Faly"} (+
-                        {record.captures.length})
-                      </span>
-                    </Badge>
-                  ) : (
-                    <span className="text-[10px] text-white/40 uppercase tracking-wider">
-                      Paika
-                    </span>
-                  )}
-                </div>
+                {isCapture && (
+                  <span className="text-[10px] text-[#C8A452] font-semibold px-1.5 py-0.5 rounded bg-[#C8A452]/10">
+                    +{record.captures.length}
+                  </span>
+                )}
               </div>
             );
           })

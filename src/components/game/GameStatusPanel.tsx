@@ -65,9 +65,9 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
   );
 
   return (
-    <div className="w-full bg-[#141210] border border-[#2E241C] rounded-2xl p-4 sm:p-5 shadow-2xl shadow-black/80 ring-1 ring-white/5 space-y-4">
-      {/* Turn Countdown Timer / Speed Mode Bar (Configurable directly in Game View) */}
-      {onToggleSpeedMode && onSetTurnTimeLimit && (
+    <div className="w-full space-y-3">
+      {/* Speed Mode Bar if active */}
+      {speedModeEnabled && onToggleSpeedMode && onSetTurnTimeLimit && (
         <TurnTimerBar
           speedModeEnabled={speedModeEnabled}
           turnTimeLimit={turnTimeLimit}
@@ -79,167 +79,133 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
         />
       )}
 
-      {/* Players & Pieces with Tactile Miniature Stones and Live Timer Badges */}
-      <div className="grid grid-cols-2 gap-3">
-        {/* White Player Card */}
+      {/* Players: JOUEUR NOIR and JOUEUR BLANC */}
+      <div className="grid grid-cols-2 gap-3 sm:gap-4">
+        {/* JOUEUR NOIR Card */}
         <div
-          className={`p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
-            isWhite && status === "playing"
-              ? "bg-[#1E1914] border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.15)] ring-1 ring-[#D4AF37]/50"
-              : "bg-[#100D0A] border-white/5 opacity-75"
+          className={`relative p-3.5 sm:p-4 rounded-xl border transition-colors ${
+            !isWhite && status === "playing"
+              ? "bg-[#181615] border-[#C8A452]/40"
+              : "bg-[#141312] border-white/[0.05] opacity-80"
           }`}
         >
-          <div className="flex items-center gap-3">
-            {/* Marble Mini Stone */}
-            <div className="w-7 h-7 rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.8),inset_0_1px_2px_rgba(255,255,255,0.9)] border border-[#E8E8E0] bg-gradient-to-br from-white via-[#FAF8F2] to-[#D5D0C0] flex items-center justify-center shrink-0">
-              <div className="w-2 h-2 rounded-full border border-[#B0B0A8]/40" />
-            </div>
-            <div>
-              <div className="text-[11px] text-white/50 flex items-center gap-1 font-medium">
-                {gameMode === "ai" && aiPlayerColor === "white" ? (
-                  <>
-                    <Bot className="w-3 h-3 text-[#D4AF37]" /> IA
-                  </>
-                ) : (
-                  <>
-                    <User className="w-3 h-3 text-white/60" /> Joueur 1
-                  </>
-                )}
+          {/* Subtle active line indicator */}
+          {!isWhite && status === "playing" && (
+            <div className="absolute top-0 left-3 right-3 h-[2px] bg-[#C8A452] rounded-full" />
+          )}
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              {/* Natural Charcoal Stone Pip */}
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#2B2926] via-[#1A1817] to-[#100F0E] border border-[#3A3734] shadow-sm flex items-center justify-center shrink-0">
+                <div className="w-1.5 h-1.5 rounded-full bg-white/[0.15]" />
               </div>
-              <div className="text-sm font-serif font-bold text-[#EFEBE4] flex items-center gap-1.5 flex-wrap">
-                <span>Blancs</span>
-                {pieceDiff > 0 && (
-                  <span className="text-[10px] font-mono text-[#D4AF37]">
-                    +{pieceDiff}
-                  </span>
-                )}
-                {speedModeEnabled && isWhite && status === "playing" && (
-                  <span
-                    className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                      timeRemaining <= 5
-                        ? "bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse"
-                        : timeRemaining <= 10
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        : "bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40"
-                    }`}
-                  >
-                    <Clock className="w-2.5 h-2.5" />
-                    {timeRemaining}s
-                  </span>
-                )}
+              <div>
+                <div className="text-[10px] text-[#9E9890] flex items-center gap-1 font-medium tracking-wider uppercase">
+                  {gameMode === "ai" && aiPlayerColor === "black" ? (
+                    <>
+                      <Bot className="w-3 h-3 text-[#C8A452]" /> IA
+                    </>
+                  ) : (
+                    <>
+                      <User className="w-3 h-3 text-[#9E9890]" /> Joueur Noir
+                    </>
+                  )}
+                </div>
+                <div className="text-sm font-serif font-semibold text-[#F5F3EE] flex items-center gap-2">
+                  <span>Noir</span>
+                  {!isWhite && status === "playing" && (
+                    <span className="text-[10px] font-sans font-medium px-1.5 py-0.2 rounded bg-[#C8A452]/15 text-[#C8A452]">
+                      Au tour
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-serif font-bold text-[#D4AF37]">
-              {pieceCounts.white}
-            </div>
-            <div className="text-[9px] uppercase tracking-wider text-white/40 font-medium">
-              capturés: {whiteCaptured}
+
+            <div className="text-right">
+              <div className="text-xl sm:text-2xl font-serif font-semibold text-[#F5F3EE]">
+                {pieceCounts.black}
+              </div>
+              <div className="text-[10px] text-[#9E9890]">
+                pièces
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Black Player Card */}
+        {/* JOUEUR BLANC Card */}
         <div
-          className={`p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
-            !isWhite && status === "playing"
-              ? "bg-[#1E1914] border-[#D4AF37] shadow-[0_0_20px_rgba(212,175,55,0.15)] ring-1 ring-[#D4AF37]/50"
-              : "bg-[#100D0A] border-white/5 opacity-75"
+          className={`relative p-3.5 sm:p-4 rounded-xl border transition-colors ${
+            isWhite && status === "playing"
+              ? "bg-[#181615] border-[#C8A452]/40"
+              : "bg-[#141312] border-white/[0.05] opacity-80"
           }`}
         >
-          <div className="flex items-center gap-3">
-            {/* Obsidian Mini Stone */}
-            <div className="w-7 h-7 rounded-full shadow-[0_2px_6px_rgba(0,0,0,0.95),inset_0_1px_2px_rgba(255,255,255,0.2)] border border-[#33302C] bg-gradient-to-br from-[#38332C] via-[#201D19] to-[#0A0908] flex items-center justify-center shrink-0">
-              <div className="w-2 h-2 rounded-full border border-white/10" />
-            </div>
-            <div>
-              <div className="text-[11px] text-white/50 flex items-center gap-1 font-medium">
-                {gameMode === "ai" && aiPlayerColor === "black" ? (
-                  <>
-                    <Bot className="w-3 h-3 text-[#D4AF37]" /> IA
-                  </>
-                ) : (
-                  <>
-                    <User className="w-3 h-3 text-white/60" /> Joueur 2
-                  </>
-                )}
+          {/* Subtle active line indicator */}
+          {isWhite && status === "playing" && (
+            <div className="absolute top-0 left-3 right-3 h-[2px] bg-[#C8A452] rounded-full" />
+          )}
+
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2.5">
+              {/* Natural Ivory Stone Pip */}
+              <div className="w-6 h-6 rounded-full bg-gradient-to-br from-[#FAF9F5] via-[#EDE8DE] to-[#DAD3C5] border border-[#CCC4B4] shadow-sm flex items-center justify-center shrink-0">
+                <div className="w-1.5 h-1.5 rounded-full bg-black/[0.08]" />
               </div>
-              <div className="text-sm font-serif font-bold text-[#EFEBE4] flex items-center gap-1.5 flex-wrap">
-                <span>Noirs</span>
-                {pieceDiff < 0 && (
-                  <span className="text-[10px] font-mono text-[#D4AF37]">
-                    +{-pieceDiff}
-                  </span>
-                )}
-                {speedModeEnabled && !isWhite && status === "playing" && (
-                  <span
-                    className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
-                      timeRemaining <= 5
-                        ? "bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse"
-                        : timeRemaining <= 10
-                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
-                        : "bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40"
-                    }`}
-                  >
-                    <Clock className="w-2.5 h-2.5" />
-                    {timeRemaining}s
-                  </span>
-                )}
+              <div>
+                <div className="text-[10px] text-[#9E9890] flex items-center gap-1 font-medium tracking-wider uppercase">
+                  {gameMode === "ai" && aiPlayerColor === "white" ? (
+                    <>
+                      <Bot className="w-3 h-3 text-[#C8A452]" /> IA
+                    </>
+                  ) : (
+                    <>
+                      <User className="w-3 h-3 text-[#9E9890]" /> Joueur Blanc
+                    </>
+                  )}
+                </div>
+                <div className="text-sm font-serif font-semibold text-[#F5F3EE] flex items-center gap-2">
+                  <span>Blanc</span>
+                  {isWhite && status === "playing" && (
+                    <span className="text-[10px] font-sans font-medium px-1.5 py-0.2 rounded bg-[#C8A452]/15 text-[#C8A452]">
+                      Au tour
+                    </span>
+                  )}
+                </div>
               </div>
             </div>
-          </div>
-          <div className="text-right">
-            <div className="text-2xl font-serif font-bold text-[#D4AF37]">
-              {pieceCounts.black}
-            </div>
-            <div className="text-[9px] uppercase tracking-wider text-white/40 font-medium">
-              capturés: {blackCaptured}
+
+            <div className="text-right">
+              <div className="text-xl sm:text-2xl font-serif font-semibold text-[#F5F3EE]">
+                {pieceCounts.white}
+              </div>
+              <div className="text-[10px] text-[#9E9890]">
+                pièces
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Middle row: Badges & Status instructions */}
-      <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
-        <div className="flex items-center gap-2">
-          <Badge variant="neutral" size="sm">
-            Tour {turnNumber}
-          </Badge>
-          {gameMode === "ai" && (
-            <Badge variant="primary" size="sm">
-              IA {formatDifficulty(difficulty)}
-            </Badge>
-          )}
-          {mandatoryCaptureActive && !inChain && (
-            <Badge variant="warning" size="sm">
-              Capture requise
-            </Badge>
-          )}
-          {inChain && (
-            <Badge variant="success" size="sm">
-              Séquence : +{captureSequence.capturesCount} capture(s)
-            </Badge>
-          )}
+      {/* Meta Bar: Round info, instructions & Optional End Turn button */}
+      <div className="flex flex-wrap items-center justify-between gap-2 px-3 py-2 rounded-lg bg-[#141312] border border-white/[0.04] text-xs">
+        <div className="flex items-center gap-2 text-[#9E9890]">
+          <span className="font-mono text-[11px]">Tour {turnNumber}</span>
+          <span className="text-white/[0.15]">•</span>
+          <span className="text-[#F5F3EE]/80">{statusText}</span>
         </div>
 
-        {/* Voluntary End Turn button if in multiple capture chain */}
         {inChain && status === "playing" && (
           <Button
             size="sm"
             variant="primary"
             onClick={onEndTurn}
-            icon={<CheckCircle2 className="w-4 h-4" />}
+            icon={<CheckCircle2 className="w-3.5 h-3.5" />}
           >
             Terminer le tour
           </Button>
         )}
-      </div>
-
-      {/* Instruction text banner */}
-      <div className="p-3 rounded-xl bg-[#1A1612] border border-[#2E241C] text-xs text-white/80 flex items-center gap-2.5">
-        <ChevronRight className="w-4 h-4 text-[#D4AF37] shrink-0" />
-        <span className="leading-snug">{statusText}</span>
       </div>
     </div>
   );
