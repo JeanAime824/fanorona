@@ -19,6 +19,15 @@ const io = new Server(server, {
   },
 });
 
+interface ServerUser {
+  uid: string;
+  username: string;
+  displayName: string;
+  email: string;
+  photoURL: string;
+  createdAt: string;
+}
+
 interface ServerGameSession {
   id: string;
   whitePlayerId: string;
@@ -32,10 +41,49 @@ interface ServerGameSession {
 }
 
 const activeGames = new Map<string, ServerGameSession>();
+const registeredUsers = new Map<string, ServerUser>();
+
+// User Authentication API - Unique ID Generation
+app.post("/api/auth/login", (req, res) => {
+  const { username, photoURL } = req.body;
+  if (!username || typeof username !== "string" || !username.trim()) {
+    return res.status(400).json({ error: "Le nom d'utilisateur est requis" });
+  }
+
+  const cleanName = username.trim();
+  const normalizedKey = cleanName.toLowerCase();
+
+  let user = registeredUsers.get(normalizedKey);
+  if (!user) {
+    // Generate permanent unique user ID
+    const uniqueId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    user = {
+      uid: uniqueId,
+      username: cleanName,
+      displayName: cleanName,
+      email: `${normalizedKey}@fanorona.local`,
+      photoURL: photoURL || "",
+      createdAt: new Date().toISOString(),
+    };
+    registeredUsers.set(normalizedKey, user);
+  }
+
+  res.json({ user });
+});
+
+// List Users / Players
+app.get("/api/users", (req, res) => {
+  res.json(Array.from(registeredUsers.values()));
+});
 
 // Health Check API
 app.get("/api/health", (req, res) => {
-  res.json({ status: "ok", activeGames: activeGames.size, timestamp: new Date().toISOString() });
+  res.json({
+    status: "ok",
+    activeGames: activeGames.size,
+    totalUsers: registeredUsers.size,
+    timestamp: new Date().toISOString(),
+  });
 });
 
 // List Public Active Games
