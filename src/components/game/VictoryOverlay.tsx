@@ -106,7 +106,7 @@ export const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
 
   // Contextual congratulatory texts
   let headline = `Victoire de ${winnerName} !`;
-  let congratulation = `Félicitations ${winnerName} ! Vous avez fait preuve d'une vision tactique exceptionnelle sur le grand Fanorona tsivy.`;
+  let congratulation = `Félicitations ${winnerName} ! Vous avez fait preuve d'une vision tactique exceptionnelle sur le grand Fanoron-tsivy.`;
 
   if (isTimeout) {
     headline = `Victoire au temps de ${winnerName} !`;
