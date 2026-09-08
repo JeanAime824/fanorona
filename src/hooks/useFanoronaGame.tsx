@@ -255,9 +255,27 @@ export function useFanoronaGameEngine() {
     (
       mode: GameMode = "pvp",
       diff: AiDifficulty = settings.aiDifficulty,
-      aiColor: Player = "black"
+      aiColor: Player = "black",
+      speedMode?: boolean,
+      timeLimit?: number,
+      multiplayerGameId?: string
     ) => {
-      const newGame = createInitialGame(mode, diff, aiColor);
+      if (speedMode !== undefined || timeLimit !== undefined) {
+        setSettings((prev) => {
+          const updated = {
+            ...prev,
+            ...(speedMode !== undefined && { speedModeEnabled: speedMode }),
+            ...(timeLimit !== undefined && { turnTimeLimit: timeLimit }),
+          };
+          storageService.saveSettings(updated);
+          syncStatsAndSettingsToFirestore(stats, updated).catch(() => {});
+          return updated;
+        });
+        if (timeLimit !== undefined) {
+          setTimeRemaining(timeLimit);
+        }
+      }
+      const newGame = createInitialGame(mode, diff, aiColor, multiplayerGameId);
       historyManagerRef.current.reset();
       setPendingChoice(null);
       setIsAiThinking(false);
@@ -266,7 +284,7 @@ export function useFanoronaGameEngine() {
       updateHistoryState();
       sound.playSelect();
     },
-    [settings.aiDifficulty, updateHistoryState]
+    [settings.aiDifficulty, stats, updateHistoryState]
   );
 
   // Apply a validated move with state and sound updates
