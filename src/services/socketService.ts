@@ -91,6 +91,22 @@ class SocketService {
     socket.off("chat_message");
     socket.on("chat_message", callback);
   }
+
+  public async addServerFriend(userId: string, targetUserId: string) {
+    const res = await fetch(`${SOCKET_SERVER_URL}/api/friends/request`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ userId, targetUserId }),
+    });
+    if (!res.ok) throw new Error("Erreur d'ajout d'ami sur le serveur");
+    return res.json();
+  }
+
+  public async getServerFriends(userId: string) {
+    const res = await fetch(`${SOCKET_SERVER_URL}/api/friends/${userId}`);
+    if (!res.ok) return [];
+    return res.json();
+  }
 }
 
 export const socketService = new SocketService();

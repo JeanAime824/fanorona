@@ -40,8 +40,17 @@ interface ServerGameSession {
   updatedAt: string;
 }
 
+interface ServerFriendship {
+  id: string;
+  userId: string;
+  friendId: string;
+  status: "pending" | "accepted";
+  createdAt: string;
+}
+
 const activeGames = new Map<string, ServerGameSession>();
 const registeredUsers = new Map<string, ServerUser>();
+const friendships = new Map<string, ServerFriendship>();
 
 // User Authentication API - Unique ID Generation
 app.post("/api/auth/login", (req, res) => {
@@ -69,6 +78,42 @@ app.post("/api/auth/login", (req, res) => {
   }
 
   res.json({ user });
+});
+
+// Friends Management API
+app.post("/api/friends/request", (req, res) => {
+  const { userId, targetUserId } = req.body;
+  if (!userId || !targetUserId) {
+    return res.status(400).json({ error: "IDs utilisateur requis" });
+  }
+
+  const friendshipId = `${userId}_${targetUserId}`;
+  const record: ServerFriendship = {
+    id: friendshipId,
+    userId,
+    friendId: targetUserId,
+    status: "accepted", // Auto-accept custom backend friend requests for smooth gameplay
+    createdAt: new Date().toISOString(),
+  };
+
+  friendships.set(friendshipId, record);
+  res.json({ success: true, friendship: record });
+});
+
+app.get("/api/friends/:userId", (req, res) => {
+  const { userId } = req.params;
+  const userFriends = Array.from(friendships.values()).filter(
+    (f) => (f.userId === userId || f.friendId === userId) && f.status === "accepted"
+  );
+  res.json(userFriends);
+});
+
+app.get("/api/friends/pending/:userId", (req, res) => {
+  const { userId } = req.params;
+  const pending = Array.from(friendships.values()).filter(
+    (f) => f.friendId === userId && f.status === "pending"
+  );
+  res.json(pending);
 });
 
 // List Users / Players
