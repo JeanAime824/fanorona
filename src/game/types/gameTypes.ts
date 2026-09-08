@@ -46,7 +46,7 @@ export type GameStatus = "playing" | "game_over" | "draw";
 
 export type GameWinner = Player | "draw" | null;
 
-export type GameMode = "pvp" | "ai";
+export type GameMode = "pvp" | "ai" | "multiplayer";
 
 export type AiDifficulty = "easy" | "medium" | "hard";
 
@@ -80,6 +80,7 @@ export interface GameState {
   difficulty: AiDifficulty;
   turnNumber: number;
   aiPlayerColor?: Player;
+  multiplayerGameId?: string; // ID for multiplayer sessions
   mandatoryCaptureActive: boolean;
   reason?: string;
 }

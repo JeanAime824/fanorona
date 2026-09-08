@@ -3,11 +3,13 @@
  * Master application layout and view router for Fanorona Web Edition.
  */
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { Navbar, NavTab } from "./components/layout/Navbar";
-import { AuthProvider } from "./context/AuthContext";
+import { AuthProvider, useAuth } from "./context/AuthContext";
 import { FanoronaProvider, useFanoronaGame } from "./hooks/useFanoronaGame";
+import { useMultiplayer } from "./hooks/useMultiplayer";
 import { GamePage } from "./pages/GamePage";
+import { FriendsPage } from "./pages/FriendsPage";
 import { HistoryPage } from "./pages/HistoryPage";
 import { RulesPage } from "./pages/RulesPage";
 import { SettingsPage } from "./pages/SettingsPage";
@@ -15,6 +17,15 @@ import { SettingsPage } from "./pages/SettingsPage";
 function AppContent() {
   const [currentTab, setCurrentTab] = useState<NavTab>("game");
   const { settings, updateSettings, stats } = useFanoronaGame();
+  const { user } = useAuth();
+  const [multiState] = useMultiplayer(user?.uid);
+  const [notificationCount, setNotificationCount] = useState(0);
+
+  // Count unread notifications
+  useEffect(() => {
+    const unreadCount = multiState.notifications.filter((n) => !n.read).length;
+    setNotificationCount(unreadCount);
+  }, [multiState.notifications]);
 
   const handleToggleSound = () => {
     updateSettings({ soundEnabled: !settings.soundEnabled });
@@ -28,11 +39,13 @@ function AppContent() {
         onSelectTab={setCurrentTab}
         soundEnabled={settings.soundEnabled}
         onToggleSound={handleToggleSound}
+        notificationCount={notificationCount}
       />
 
       {/* Main Tab Content */}
       <main className="flex-1 flex flex-col">
         {currentTab === "game" && <GamePage />}
+        {currentTab === "friends" && <FriendsPage />}
         {currentTab === "rules" && <RulesPage />}
         {currentTab === "history" && <HistoryPage />}
         {currentTab === "settings" && (
@@ -67,6 +80,12 @@ function AppContent() {
               className="hover:text-[#D4AF37] transition-colors cursor-pointer"
             >
               Histoire
+            </button>
+            <button
+              onClick={() => setCurrentTab("friends")}
+              className="hover:text-[#D4AF37] transition-colors cursor-pointer"
+            >
+              Amis
             </button>
             <button
               onClick={() => setCurrentTab("settings")}

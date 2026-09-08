@@ -3,18 +3,19 @@
  * Top navigation bar with Malagasy cultural branding and tab links.
  */
 
-import { BookOpen, Compass, Gamepad2, Settings as SettingsIcon, Volume2, VolumeX } from "lucide-react";
+import { Bell, BookOpen, Compass, Gamepad2, Settings as SettingsIcon, Users, Volume2, VolumeX } from "lucide-react";
 import React from "react";
 import { UserMenu } from "../auth/UserMenu";
 import { IconButton } from "../ui/IconButton";
 
-export type NavTab = "game" | "rules" | "history" | "settings";
+export type NavTab = "game" | "friends" | "rules" | "history" | "settings";
 
 export interface NavbarProps {
   currentTab: NavTab;
   onSelectTab: (tab: NavTab) => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
+  notificationCount?: number;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -22,6 +23,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectTab,
   soundEnabled,
   onToggleSound,
+  notificationCount = 0,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-[#121110]/95 backdrop-blur-md border-b border-white/[0.06]">
@@ -74,7 +76,26 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04]"
             }`}
           >
-            <span>Jouer</span>
+            <Gamepad2 className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Jouer</span>
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectTab("friends")}
+            className={`relative px-3 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-colors cursor-pointer flex items-center gap-1.5 ${
+              currentTab === "friends"
+                ? "bg-white/[0.08] text-[#F5F3EE]"
+                : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04]"
+            }`}
+          >
+            <Users className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Amis</span>
+            {notificationCount > 0 && (
+              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
+                {notificationCount > 9 ? "9+" : notificationCount}
+              </span>
+            )}
           </button>
 
           <button
@@ -86,7 +107,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04]"
             }`}
           >
-            <span>Règles</span>
+            <BookOpen className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Règles</span>
           </button>
 
           <button
@@ -98,6 +120,7 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04]"
             }`}
           >
+            <Compass className="w-3.5 h-3.5" />
             <span>Histoire</span>
           </button>
 
@@ -110,7 +133,8 @@ export const Navbar: React.FC<NavbarProps> = ({
                 : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04]"
             }`}
           >
-            <span>Paramètres</span>
+            <SettingsIcon className="w-3.5 h-3.5" />
+            <span className="hidden sm:inline">Paramètres</span>
           </button>
 
           {/* Separation */}
