@@ -11,6 +11,7 @@ import { GameOverModal } from "../components/game/GameOverModal";
 import { GameStatusPanel } from "../components/game/GameStatusPanel";
 import { MoveHistoryPanel } from "../components/game/MoveHistoryPanel";
 import { NewGameModal } from "../components/game/NewGameModal";
+import { VoiceChatBar } from "../components/game/VoiceChatBar";
 import { VictoryOverlay } from "../components/game/VictoryOverlay";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
@@ -165,6 +166,9 @@ export const GamePage: React.FC = () => {
           </div>
         </div>
       )}
+
+      {/* WebRTC Real-Time Voice Chat Bar */}
+      <VoiceChatBar gameId={gameState.multiplayerGameId} opponentName="Adversaire" />
 
       {/* Top Matchup Header: Joueur Noir VS Joueur Blanc */}
       <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#141312] border border-white/[0.04] mx-auto max-w-7xl">
