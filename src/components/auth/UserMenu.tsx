@@ -4,6 +4,7 @@
  */
 
 import {
+  AlertCircle,
   CheckCircle2,
   Cloud,
   Database,
@@ -12,10 +13,12 @@ import {
   RefreshCw,
   ShieldCheck,
   User as UserIcon,
+  X,
 } from "lucide-react";
 import React, { useRef, useState, useEffect } from "react";
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../ui/Button";
+import { Modal } from "../ui/Modal";
 
 interface UserMenuProps {
   onOpenSettings?: () => void;
@@ -25,6 +28,7 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
   const { user, loading, signInWithGoogle, logout } = useAuth();
   const [isOpen, setIsOpen] = useState(false);
   const [isSigningIn, setIsSigningIn] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
   const menuRef = useRef<HTMLDivElement>(null);
 
   // Close menu on outside click
@@ -39,11 +43,26 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
   }, []);
 
   const handleSignIn = async () => {
+    setAuthError(null);
     try {
       setIsSigningIn(true);
       await signInWithGoogle();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Erreur de connexion Google:", err);
+      const errCode = err?.code || "";
+      const message = err?.message || String(err);
+
+      if (errCode === "auth/unauthorized-domain") {
+        setAuthError(
+          "Ce domaine n'est pas autorisé dans Firebase. Ajoutez le domaine de votre site (ex: mon-site.netlify.app) dans la console Firebase > Authentication > Settings > Authorized Domains."
+        );
+      } else if (errCode === "auth/popup-closed-by-user") {
+        setAuthError("La fenêtre de connexion a été fermée avant la fin de l'authentification.");
+      } else if (errCode === "auth/popup-blocked") {
+        setAuthError("Votre navigateur a bloqué la fenêtre surgissante. Veuillez autoriser les popups pour ce site.");
+      } else {
+        setAuthError(`Erreur de connexion (${errCode || "inconnue"}) : ${message}`);
+      }
     } finally {
       setIsSigningIn(false);
     }
@@ -66,18 +85,42 @@ export const UserMenu: React.FC<UserMenuProps> = () => {
 
   if (!user) {
     return (
-      <button
-        type="button"
-        onClick={handleSignIn}
-        disabled={isSigningIn}
-        className="px-3 py-1.5 rounded-lg text-xs font-medium tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-[#F5F3EE] border border-white/[0.08] hover:border-[#C8A452]/40 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
-        title="Se connecter avec un compte Google"
-      >
-        <LogIn className="w-3.5 h-3.5 text-[#C8A452]" />
-        <span>
-          {isSigningIn ? "Connexion..." : "Connexion"}
-        </span>
-      </button>
+      <>
+        <button
+          type="button"
+          onClick={handleSignIn}
+          disabled={isSigningIn}
+          className="px-3 py-1.5 rounded-lg text-xs font-medium tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-[#F5F3EE] border border-white/[0.08] hover:border-[#C8A452]/40 transition-all flex items-center gap-2 cursor-pointer disabled:opacity-50"
+          title="Se connecter avec un compte Google"
+        >
+          <LogIn className="w-3.5 h-3.5 text-[#C8A452]" />
+          <span>{isSigningIn ? "Connexion..." : "Connexion"}</span>
+        </button>
+
+        {authError && (
+          <Modal
+            isOpen={!!authError}
+            onClose={() => setAuthError(null)}
+            title="Erreur de connexion"
+            maxWidth="sm"
+          >
+            <div className="space-y-4">
+              <div className="flex items-start gap-3 p-3 bg-red-500/10 border border-red-500/20 rounded-xl text-xs text-red-400">
+                <AlertCircle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-semibold text-red-300">Échec de l'authentification</div>
+                  <p className="leading-relaxed text-red-400/90">{authError}</p>
+                </div>
+              </div>
+              <div className="flex justify-end gap-2">
+                <Button variant="primary" size="sm" onClick={() => setAuthError(null)}>
+                  Fermer
+                </Button>
+              </div>
+            </div>
+          </Modal>
+        )}
+      </>
     );
   }
 
