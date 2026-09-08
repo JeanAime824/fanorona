@@ -51,7 +51,7 @@ export interface UseMultiplayerActions {
     playerColor: "white" | "black" | "random",
     timeControl: number
   ) => Promise<string>;
-  acceptChallenge: (challengeId: string) => Promise<void>;
+  acceptChallenge: (challengeId: string) => Promise<string>;
   rejectChallenge: (challengeId: string, reason?: string) => Promise<void>;
   createLiveGame: (
     opponentId: string,

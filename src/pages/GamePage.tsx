@@ -53,12 +53,12 @@ export const GamePage: React.FC = () => {
   const [multiplayerConnected, setMultiplayerConnected] = useState(true);
   const [multiplayerGameId, setMultiplayerGameId] = useState<string | null>(null);
 
-  // Subscribe to multiplayer game updates if in multiplayer mode
+  // Sync multiplayer game updates if in multiplayer mode
   useEffect(() => {
     if (gameState.gameMode === "multiplayer" && gameState.multiplayerGameId) {
       setMultiplayerGameId(gameState.multiplayerGameId);
       
-      const unsubscribe = multiActions.updateLiveGame(
+      multiActions.updateLiveGame(
         gameState.multiplayerGameId,
         gameState,
         gameState.currentPlayer,
@@ -71,12 +71,6 @@ export const GamePage: React.FC = () => {
             }
           : undefined
       );
-      
-      return () => {
-        if (typeof unsubscribe === "function") {
-          unsubscribe();
-        }
-      };
     }
   }, [gameState, multiState]);
 

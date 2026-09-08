@@ -3,7 +3,7 @@
  * Panel showing friends list and friend requests.
  */
 
-import { Check, Minus, Plus, X } from "lucide-react";
+import { Check, Minus, Plus, X, Zap } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { ChallengeFriendModal } from "./ChallengeFriendModal";
 import { Button } from "../ui/Button";

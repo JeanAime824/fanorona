@@ -26,7 +26,8 @@ import {
 export function createInitialGame(
   gameMode: GameMode = "pvp",
   difficulty: AiDifficulty = "medium",
-  aiPlayerColor: Player = "black"
+  aiPlayerColor: Player = "black",
+  multiplayerGameId?: string
 ): GameState {
   const board = createInitialBoard();
   const initialPlayer: Player = "white";
@@ -48,6 +49,7 @@ export function createInitialGame(
     difficulty,
     turnNumber: 1,
     aiPlayerColor: gameMode === "ai" ? aiPlayerColor : undefined,
+    multiplayerGameId,
     mandatoryCaptureActive: false,
   };
 
