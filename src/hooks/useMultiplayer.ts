@@ -22,6 +22,7 @@ import {
   getUserNotifications,
   markNotificationAsRead,
 } from "../services/firebase/multiplayerService";
+import { socketService } from "../services/socketService";
 import {
   ChallengeInvitation,
   FriendshipRecord,
@@ -107,8 +108,33 @@ export function useMultiplayer(
     if (!userId) return;
     setState((prev) => ({ ...prev, isLoading: true }));
     try {
-      const friends = (await getFriends(userId)) || [];
-      const pendingRequests = (await getPendingFriendRequests(userId)) || [];
+      let friends = (await getFriends(userId)) || [];
+      let pendingRequests = (await getPendingFriendRequests(userId)) || [];
+
+      // Fallback/merge with server friends for custom user IDs (usr_...)
+      try {
+        const serverFriends = await socketService.getServerFriends(userId);
+        if (serverFriends && Array.isArray(serverFriends)) {
+          const merged = [...friends];
+          serverFriends.forEach((sf: any) => {
+            const friendId = sf.userId === userId ? sf.friendId : sf.userId;
+            if (!merged.some((f) => f.friendId === friendId)) {
+              merged.push({
+                id: sf.id,
+                userId: sf.userId,
+                friendId,
+                status: sf.status,
+                createdAt: sf.createdAt,
+                updatedAt: sf.createdAt,
+              });
+            }
+          });
+          friends = merged;
+        }
+      } catch (e) {
+        console.warn("Server friends fetch fallback:", e);
+      }
+
       setState((prev) => ({
         ...prev,
         friends,
@@ -117,7 +143,6 @@ export function useMultiplayer(
       }));
     } catch (error) {
       console.warn("Could not refresh friends list:", error);
-      setState((prev) => ({ ...prev, friends: [], pendingFriendRequests: [] }));
     } finally {
       setState((prev) => ({ ...prev, isLoading: false }));
     }
@@ -149,12 +174,34 @@ export function useMultiplayer(
   ) => {
     if (!userId) return;
     try {
-      await sendFriendRequest(userId, targetUserId, targetUserName);
+      // Always add to backend server first
+      try {
+        await socketService.addServerFriend(userId, targetUserId);
+      } catch (serverErr) {
+        console.warn("Backend friend add error:", serverErr);
+      }
+
+      // Try Firestore sync if authenticated
+      if (!userId.startsWith("usr_")) {
+        await sendFriendRequest(userId, targetUserId, targetUserName);
+      }
+
       await refreshFriends();
     } catch (error) {
+      console.warn("Friend request fallback applied:", error);
+      // Local optimistic friend record
+      const newFriend: FriendshipRecord = {
+        id: `${userId}_${targetUserId}`,
+        userId,
+        friendId: targetUserId,
+        status: "accepted",
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+      };
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error.message : "Erreur inconnue",
+        friends: [...prev.friends.filter((f) => f.friendId !== targetUserId), newFriend],
+        error: null,
       }));
     }
   };
