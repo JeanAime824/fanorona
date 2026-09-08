@@ -3,7 +3,7 @@
  * Panel showing friends list and friend requests.
  */
 
-import { Check, Minus, Plus, X, Zap } from "lucide-react";
+import { Check, Minus, Plus, UserPlus, X, Zap } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { ChallengeFriendModal } from "./ChallengeFriendModal";
 import { Button } from "../ui/Button";
@@ -91,19 +91,29 @@ export const FriendsPanel: React.FC<FriendsPanelProps> = ({
         </div>
       )}
 
+      {/* Add Friend Action Bar */}
+      <div className="p-3 bg-white/[0.03] rounded-lg border border-white/[0.08] flex items-center justify-between">
+        <div>
+          <div className="text-xs font-bold text-[#F5F3EE]">Réseau d'amis</div>
+          <div className="text-[10px] text-[#9E9890]">Ajoutez vos amis par leur ID joueur pour les défier</div>
+        </div>
+
+        <button
+          type="button"
+          onClick={() => setIsSearchOpen(!isSearchOpen)}
+          className="px-3 py-1.5 rounded-lg bg-[#C8A452] hover:bg-[#D4AF37] text-black font-semibold text-xs transition-all flex items-center gap-1.5 cursor-pointer shadow-sm"
+        >
+          <UserPlus className="w-3.5 h-3.5" />
+          <span>Ajouter un ami</span>
+        </button>
+      </div>
+
       {/* Friends List */}
       <div className="p-3 bg-white/[0.03] rounded-lg border border-white/[0.08]">
         <div className="flex items-center justify-between mb-2">
           <div className="text-xs font-semibold text-[#F5F3EE] uppercase tracking-wider">
-            Amis ({friends.length})
+            Liste d'amis ({friends.length})
           </div>
-          <button
-            onClick={() => setIsSearchOpen(!isSearchOpen)}
-            className="p-1 rounded hover:bg-white/[0.1] text-[#9E9890] transition-colors"
-            title="Ajouter un ami"
-          >
-            <Plus className="w-3 h-3" />
-          </button>
         </div>
 
         {isSearchOpen && (
