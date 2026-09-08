@@ -190,12 +190,18 @@ export function applyMove(state: GameState, move: Move): GameState {
   const statusCheck = checkGameStatus(nextState);
   nextState.status = statusCheck.status;
   nextState.winner = statusCheck.winner;
+  nextState.reason = statusCheck.reason;
 
   // 7. Calculate new legal moves
-  nextState.legalMoves = getLegalMoves(nextState);
-  nextState.mandatoryCaptureActive = nextState.legalMoves.some(
-    (m) => m.captures && m.captures.length > 0
-  );
+  if (nextState.status === "game_over") {
+    nextState.legalMoves = [];
+    nextState.mandatoryCaptureActive = false;
+  } else {
+    nextState.legalMoves = getLegalMoves(nextState);
+    nextState.mandatoryCaptureActive = nextState.legalMoves.some(
+      (m) => m.captures && m.captures.length > 0
+    );
+  }
 
   return nextState;
 }
@@ -223,11 +229,17 @@ export function endTurn(state: GameState): GameState {
   const statusCheck = checkGameStatus(nextState);
   nextState.status = statusCheck.status;
   nextState.winner = statusCheck.winner;
+  nextState.reason = statusCheck.reason;
 
-  nextState.legalMoves = getLegalMoves(nextState);
-  nextState.mandatoryCaptureActive = nextState.legalMoves.some(
-    (m) => m.captures && m.captures.length > 0
-  );
+  if (nextState.status === "game_over") {
+    nextState.legalMoves = [];
+    nextState.mandatoryCaptureActive = false;
+  } else {
+    nextState.legalMoves = getLegalMoves(nextState);
+    nextState.mandatoryCaptureActive = nextState.legalMoves.some(
+      (m) => m.captures && m.captures.length > 0
+    );
+  }
 
   return nextState;
 }

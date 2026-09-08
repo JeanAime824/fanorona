@@ -7,17 +7,20 @@
 import { ArrowDownLeft, ArrowUpRight, Crosshair, X } from "lucide-react";
 import React, { useMemo } from "react";
 import { isSamePosition } from "../../game/board/boardGraph";
-import { BoardTheme, GameState, Position } from "../../game/types/gameTypes";
+import { BoardTheme, GameState, Piece, PieceTexture, Position } from "../../game/types/gameTypes";
 import { PendingAmbiguousMove } from "../../hooks/useFanoronaGame";
 import { getBoardTheme } from "../../services/theme/boardThemes";
-import { BoardGridSvg } from "./BoardGridSvg";
+import { BOARD_SVG_HEIGHT, BOARD_SVG_WIDTH, BoardGridSvg, getCoordinates } from "./BoardGridSvg";
 import { BoardIntersection } from "./BoardIntersection";
+import { PieceStone } from "./PieceStone";
 
 export interface FanoronaBoardProps {
   gameState: GameState;
   targetablePositions: Position[];
   pendingChoice?: PendingAmbiguousMove | null;
   theme?: BoardTheme;
+  pieceTexture?: PieceTexture;
+  animationsEnabled?: boolean;
   onSelectPosition: (pos: Position) => void;
   onResolveChoice?: (type: "approach" | "withdrawal") => void;
   onCancelChoice?: () => void;
@@ -29,6 +32,8 @@ export const FanoronaBoard: React.FC<FanoronaBoardProps> = ({
   targetablePositions,
   pendingChoice,
   theme,
+  pieceTexture,
+  animationsEnabled = true,
   onSelectPosition,
   onResolveChoice,
   onCancelChoice,
@@ -71,6 +76,23 @@ export const FanoronaBoard: React.FC<FanoronaBoardProps> = ({
     });
     return set;
   }, [legalMoves, captureSequence, selectedPosition]);
+
+  // Active pieces for smooth positional gliding animations
+  const activePieces = useMemo(() => {
+    const list: Array<{
+      piece: Piece;
+      position: Position;
+    }> = [];
+    for (let r = 0; r < board.length; r++) {
+      for (let c = 0; c < board[r].length; c++) {
+        const piece = board[r][c];
+        if (piece) {
+          list.push({ piece, position: { row: r, col: c } });
+        }
+      }
+    }
+    return list;
+  }, [board]);
 
   return (
     <div className="relative w-full mx-auto select-none">
@@ -187,6 +209,53 @@ export const FanoronaBoard: React.FC<FanoronaBoardProps> = ({
                 );
               })
             )}
+          </div>
+
+          {/* Animated Game Pieces Layer with smooth CSS transitions */}
+          <div className="absolute inset-0 pointer-events-none">
+            {activePieces.map(({ piece, position }) => {
+              const coords = getCoordinates(position);
+              const leftPercent = (coords.x / BOARD_SVG_WIDTH) * 100;
+              const topPercent = (coords.y / BOARD_SVG_HEIGHT) * 100;
+              const isSelected = isSamePosition(selectedPosition, position);
+              const inChain =
+                captureSequence !== null &&
+                isSamePosition(captureSequence.piecePosition, position);
+              const isPendingOrig = pendingChoice
+                ? isSamePosition(pendingChoice.from, position)
+                : false;
+              const isApproachCandidate = approachCaptureMap.has(
+                `${position.row},${position.col}`
+              );
+              const isWithdrawalCandidate = withdrawalCaptureMap.has(
+                `${position.row},${position.col}`
+              );
+
+              return (
+                <div
+                  key={piece.id}
+                  id={`piece-${piece.id}`}
+                  style={{
+                    left: `${leftPercent}%`,
+                    top: `${topPercent}%`,
+                  }}
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 xl:w-16 xl:h-16 2xl:w-20 2xl:h-20 flex items-center justify-center pointer-events-none ${
+                    animationsEnabled
+                      ? "transition-[left,top] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
+                      : "transition-none"
+                  }`}
+                >
+                  <PieceStone
+                    player={piece.player}
+                    isSelected={isSelected || Boolean(isPendingOrig)}
+                    isInCaptureSequence={inChain}
+                    isCapturableTarget={isApproachCandidate || isWithdrawalCandidate}
+                    theme={theme}
+                    pieceTexture={pieceTexture}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
       </div>

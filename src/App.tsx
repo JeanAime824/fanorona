@@ -5,6 +5,7 @@
 
 import React, { useState } from "react";
 import { Navbar, NavTab } from "./components/layout/Navbar";
+import { AuthProvider } from "./context/AuthContext";
 import { FanoronaProvider, useFanoronaGame } from "./hooks/useFanoronaGame";
 import { GamePage } from "./pages/GamePage";
 import { HistoryPage } from "./pages/HistoryPage";
@@ -82,8 +83,10 @@ function AppContent() {
 
 export default function App() {
   return (
-    <FanoronaProvider>
-      <AppContent />
-    </FanoronaProvider>
+    <AuthProvider>
+      <FanoronaProvider>
+        <AppContent />
+      </FanoronaProvider>
+    </AuthProvider>
   );
 }

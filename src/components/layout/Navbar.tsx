@@ -5,6 +5,7 @@
 
 import { BookOpen, Compass, Gamepad2, Settings as SettingsIcon, Volume2, VolumeX } from "lucide-react";
 import React from "react";
+import { UserMenu } from "../auth/UserMenu";
 import { IconButton } from "../ui/IconButton";
 
 export type NavTab = "game" | "rules" | "history" | "settings";
@@ -104,7 +105,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           </button>
 
           {/* Quick Sound Toggle */}
-          <div className="ml-1 sm:ml-2 pl-2 sm:pl-3 border-l border-white/10">
+          <div className="ml-1 sm:ml-2 pl-2 sm:pl-3 border-l border-white/10 flex items-center gap-2">
             <IconButton
               size="sm"
               variant="ghost"
@@ -118,6 +119,9 @@ export const Navbar: React.FC<NavbarProps> = ({
               }
               onClick={onToggleSound}
             />
+
+            {/* Google Authentication & Firestore Sync Menu */}
+            <UserMenu />
           </div>
         </nav>
       </div>

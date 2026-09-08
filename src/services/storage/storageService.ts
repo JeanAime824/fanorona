@@ -29,6 +29,11 @@ export const DEFAULT_SETTINGS: GameSettings = {
   aiDifficulty: "medium",
   confirmNewGame: true,
   theme: "modern_minimal",
+  pieceTexture: "wooden",
+  speedModeEnabled: false,
+  turnTimeLimit: 30,
+  playerNameWhite: "Joueur Blanc",
+  playerNameBlack: "Joueur Noir",
 };
 
 export const DEFAULT_STATS: GameStats = {
@@ -106,7 +111,12 @@ export class LocalStorageService implements IStorageService {
       const parsed = JSON.parse(raw);
       const validThemes = ["modern_minimal", "luxury_wood", "zen_bamboo", "malagasy_wood", "slate_contemporary"];
       const theme = validThemes.includes(parsed.theme) ? parsed.theme : DEFAULT_SETTINGS.theme;
-      return { ...DEFAULT_SETTINGS, ...parsed, theme };
+      const pieceTexture = parsed.pieceTexture === "stone" ? "stone" : "wooden";
+      const speedModeEnabled = typeof parsed.speedModeEnabled === "boolean" ? parsed.speedModeEnabled : DEFAULT_SETTINGS.speedModeEnabled;
+      const turnTimeLimit = typeof parsed.turnTimeLimit === "number" && parsed.turnTimeLimit > 0 ? parsed.turnTimeLimit : DEFAULT_SETTINGS.turnTimeLimit;
+      const playerNameWhite = typeof parsed.playerNameWhite === "string" && parsed.playerNameWhite.trim() ? parsed.playerNameWhite.trim() : DEFAULT_SETTINGS.playerNameWhite;
+      const playerNameBlack = typeof parsed.playerNameBlack === "string" && parsed.playerNameBlack.trim() ? parsed.playerNameBlack.trim() : DEFAULT_SETTINGS.playerNameBlack;
+      return { ...DEFAULT_SETTINGS, ...parsed, theme, pieceTexture, speedModeEnabled, turnTimeLimit, playerNameWhite, playerNameBlack };
     } catch (e) {
       return DEFAULT_SETTINGS;
     }

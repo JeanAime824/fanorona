@@ -4,6 +4,7 @@
  * AI agent, sound synthesizer, and storage service.
  */
 
+import { onAuthStateChanged } from "firebase/auth";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { chooseBestMove } from "../game/ai/aiPlayer";
 import { isSamePosition } from "../game/board/boardGraph";
@@ -21,6 +22,12 @@ import {
   Position,
 } from "../game/types/gameTypes";
 import { sound } from "../services/audio/soundSynthesizer";
+import { auth } from "../services/firebase/firebase";
+import {
+  loadUserStatsFromFirestore,
+  saveGameRecordToFirestore,
+  syncStatsAndSettingsToFirestore,
+} from "../services/firebase/syncService";
 import { storageService } from "../services/storage/storageService";
 
 export interface PendingAmbiguousMove {
@@ -59,6 +66,52 @@ export function useFanoronaGameEngine() {
     sound.setSoundEnabled(settings.soundEnabled);
   }, [settings.soundEnabled]);
 
+  // Cloud sync on user login: restore user's stats and preferences from Firestore
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        try {
+          const cloudData = await loadUserStatsFromFirestore();
+          if (cloudData) {
+            setStats((prev) => {
+              const merged: GameStats = {
+                ...prev,
+                gamesPlayed: Math.max(prev.gamesPlayed, cloudData.gamesPlayed),
+                gamesWon: Math.max(prev.gamesWon, cloudData.gamesWon),
+                gamesLost: Math.max(prev.gamesLost, cloudData.gamesLost),
+                gamesDrawn: Math.max(prev.gamesDrawn, cloudData.gamesDrawn),
+                totalCaptures: Math.max(prev.totalCaptures, cloudData.totalCaptures),
+              };
+              storageService.saveStats(merged);
+              return merged;
+            });
+
+            setSettings((prev) => {
+              const merged: GameSettings = {
+                ...prev,
+                theme: (cloudData.theme as any) || prev.theme,
+                pieceTexture: (cloudData.pieceTexture as any) || prev.pieceTexture,
+                speedModeEnabled: cloudData.speedModeEnabled ?? prev.speedModeEnabled,
+                turnTimeLimit: cloudData.turnTimeLimit || prev.turnTimeLimit,
+                playerNameWhite: cloudData.playerNameWhite || prev.playerNameWhite,
+                playerNameBlack: cloudData.playerNameBlack || prev.playerNameBlack,
+              };
+              storageService.saveSettings(merged);
+              return merged;
+            });
+          } else {
+            // New cloud profile for this user: sync current local stats up to Firestore
+            syncStatsAndSettingsToFirestore(stats, settings).catch(() => {});
+          }
+        } catch (e) {
+          console.warn("Could not load cloud user stats:", e);
+        }
+      }
+    });
+
+    return () => unsubscribe();
+  }, []);
+
   // History Manager
   const historyManagerRef = useRef<HistoryManager>(new HistoryManager());
 
@@ -74,6 +127,70 @@ export function useFanoronaGameEngine() {
   // Track undo/redo capability
   const [canUndo, setCanUndo] = useState(false);
   const [canRedo, setCanRedo] = useState(false);
+
+  // Speed Mode Turn Countdown Timer (in seconds)
+  const [timeRemaining, setTimeRemaining] = useState<number>(
+    () => settings.turnTimeLimit || 30
+  );
+
+  // Reset timer on turn advance, player switch, capture step, or time limit reconfiguration
+  useEffect(() => {
+    setTimeRemaining(settings.turnTimeLimit || 30);
+  }, [
+    gameState.currentPlayer,
+    gameState.turnNumber,
+    gameState.captureSequence,
+    settings.turnTimeLimit,
+  ]);
+
+  // Turn Countdown Timer Interval
+  useEffect(() => {
+    if (!settings.speedModeEnabled || gameState.status !== "playing") {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setTimeRemaining((prev) => {
+        const next = prev - 1;
+        // Urgent audio ticks during the final 5 seconds
+        if (next <= 5 && next > 0) {
+          sound.playTick(next <= 3);
+        }
+        return Math.max(0, next);
+      });
+    }, 1000);
+
+    return () => clearInterval(interval);
+  }, [
+    settings.speedModeEnabled,
+    gameState.status,
+    gameState.currentPlayer,
+    gameState.turnNumber,
+    gameState.captureSequence,
+  ]);
+
+  // Handle Timeout (Loss on time in Speed Mode)
+  useEffect(() => {
+    if (
+      settings.speedModeEnabled &&
+      gameState.status === "playing" &&
+      timeRemaining <= 0
+    ) {
+      sound.playTimeout();
+      setGameState((current) => {
+        if (current.status !== "playing") return current;
+        const winner: Player = current.currentPlayer === "white" ? "black" : "white";
+        const loserName = current.currentPlayer === "white" ? "Blancs" : "Noirs";
+        const winnerName = winner === "white" ? "Blancs" : "Noirs";
+        return {
+          ...current,
+          status: "game_over",
+          winner,
+          reason: `Temps écoulé ! Le joueur ${loserName} a dépassé la limite de temps (${settings.turnTimeLimit}s). Victoire des ${winnerName} !`,
+        };
+      });
+    }
+  }, [timeRemaining, settings.speedModeEnabled, gameState.status, settings.turnTimeLimit]);
 
   const updateHistoryState = useCallback(() => {
     setCanUndo(historyManagerRef.current.canUndo());
@@ -121,6 +238,11 @@ export function useFanoronaGameEngine() {
             prev.totalCaptures + gameState.capturedPieces.white + gameState.capturedPieces.black,
         };
         storageService.saveStats(next);
+
+        // Persist match and stats to Firestore if signed in
+        syncStatsAndSettingsToFirestore(next, settings).catch(() => {});
+        saveGameRecordToFirestore(gameState, settings.speedModeEnabled).catch(() => {});
+
         return next;
       });
     } else if (gameState.status === "playing") {
@@ -387,13 +509,40 @@ export function useFanoronaGameEngine() {
   }, [gameState]);
 
   // Settings updater
-  const updateSettings = useCallback((newSettings: Partial<GameSettings>) => {
+  const updateSettings = useCallback(
+    (newSettings: Partial<GameSettings>) => {
+      setSettings((prev) => {
+        const updated = { ...prev, ...newSettings };
+        storageService.saveSettings(updated);
+        syncStatsAndSettingsToFirestore(stats, updated).catch(() => {});
+        return updated;
+      });
+    },
+    [stats]
+  );
+
+  // Quick toggle for speed mode
+  const toggleSpeedMode = useCallback(() => {
     setSettings((prev) => {
-      const updated = { ...prev, ...newSettings };
+      const updated = { ...prev, speedModeEnabled: !prev.speedModeEnabled };
       storageService.saveSettings(updated);
+      syncStatsAndSettingsToFirestore(stats, updated).catch(() => {});
       return updated;
     });
-  }, []);
+    sound.playSelect();
+  }, [stats]);
+
+  // Configurable turn duration
+  const setTurnTimeLimit = useCallback((seconds: number) => {
+    setSettings((prev) => {
+      const updated = { ...prev, turnTimeLimit: seconds };
+      storageService.saveSettings(updated);
+      syncStatsAndSettingsToFirestore(stats, updated).catch(() => {});
+      return updated;
+    });
+    setTimeRemaining(seconds);
+    sound.playSelect();
+  }, [stats]);
 
   // AI Turn Execution Loop
   useEffect(() => {
@@ -484,5 +633,8 @@ export function useFanoronaGameEngine() {
     handleRedo,
     handleResign,
     updateSettings,
+    timeRemaining,
+    toggleSpeedMode,
+    setTurnTimeLimit,
   };
 }

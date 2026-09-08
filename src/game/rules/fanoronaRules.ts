@@ -4,8 +4,8 @@
  */
 
 import { countPieces } from "../board/initialBoard";
-import { getLegalMoves } from "../moves/moveGenerator";
-import { GameState, GameStatus, GameWinner, Player } from "../types/gameTypes";
+import { getAllCaptures, getAllPaikaMoves, getLegalMoves } from "../moves/moveGenerator";
+import { GameState, GameStatus, GameWinner, Piece, Player } from "../types/gameTypes";
 
 export const FANORONA_RULES_DOC = {
   variant: "Fanoron-tsivy (Standard Traditionnel de Madagascar)",
@@ -27,11 +27,21 @@ export const FANORONA_RULES_DOC = {
   ],
   victoryConditions: [
     "Capture de toutes les pièces adverses (adversaire réduit à 0 pièce).",
-    "Blocage complet : si le joueur actif ne dispose d'aucun mouvement légal (pat), il perd la partie.",
-    "Partie nulle (Match nul) : lorsqu'il ne reste qu'une seule pièce de chaque côté.",
+    "Dernière pièce adverse bloquée : s'il ne reste qu'une seule pièce de l'autre côté et qu'elle n'a plus où aller, l'adversaire gagne immédiatement la partie.",
+    "Blocage complet (pat) : si le joueur actif ne dispose d'aucun mouvement légal, il perd la partie.",
+    "Partie nulle (Match nul) : lorsqu'il ne reste qu'une seule pièce mobile de chaque côté.",
     "Abandon de la partie par un joueur."
   ]
 };
+
+/**
+ * Checks whether a given player has any available moves (capture or paika) on the board.
+ */
+export function hasAnyAvailableMove(board: (Piece | null)[][], player: Player): boolean {
+  if (getAllCaptures(board, player).length > 0) return true;
+  if (getAllPaikaMoves(board, player).length > 0) return true;
+  return false;
+}
 
 /**
  * Checks whether the game has reached a terminal state (win, loss, draw).
@@ -43,7 +53,7 @@ export function checkGameStatus(state: GameState): {
 } {
   const { white, black } = countPieces(state.board);
 
-  // 1. Elimination
+  // 1. Total elimination
   if (white === 0) {
     return {
       status: "game_over",
@@ -60,17 +70,62 @@ export function checkGameStatus(state: GameState): {
     };
   }
 
-  // 2. Draw: exactly 1 piece remaining on each side
+  // 2. Specific rule: If only 1 piece remains on one side and it has nowhere to go,
+  // the opponent wins immediately!
+  const whiteHasMoves = hasAnyAvailableMove(state.board, "white");
+  const blackHasMoves = hasAnyAvailableMove(state.board, "black");
+
+  // Check 1 vs 1 case first
   if (white === 1 && black === 1) {
+    if (!whiteHasMoves && !blackHasMoves) {
+      const winner: Player = state.currentPlayer === "white" ? "black" : "white";
+      return {
+        status: "game_over",
+        winner,
+        reason: `Les deux dernières pièces sont bloquées. Le joueur actif (${state.currentPlayer === "white" ? "Blanc" : "Noir"}) ne peut pas jouer.`,
+      };
+    }
+    if (!whiteHasMoves) {
+      return {
+        status: "game_over",
+        winner: "black",
+        reason: "La dernière pièce blanche n'a plus où aller (bloquée) : victoire des Noirs !",
+      };
+    }
+    if (!blackHasMoves) {
+      return {
+        status: "game_over",
+        winner: "white",
+        reason: "La dernière pièce noire n'a plus où aller (bloquée) : victoire des Blancs !",
+      };
+    }
     return {
       status: "game_over",
       winner: "draw",
-      reason: "Partie nulle : il ne reste qu'une seule pièce de chaque côté.",
+      reason: "Partie nulle : il ne reste qu'une seule pièce mobile de chaque côté.",
     };
   }
 
-  // 2. Stalemate / Blocking check
-  // In Fanorona, a player with no legal moves loses.
+  // When Black has only 1 piece left and it cannot move anywhere
+  if (black === 1 && !blackHasMoves) {
+    return {
+      status: "game_over",
+      winner: "white",
+      reason: "Il ne reste qu'une seule pièce noire et elle n'a plus où aller (bloquée) : victoire des Blancs !",
+    };
+  }
+
+  // When White has only 1 piece left and it cannot move anywhere
+  if (white === 1 && !whiteHasMoves) {
+    return {
+      status: "game_over",
+      winner: "black",
+      reason: "Il ne reste qu'une seule pièce blanche et elle n'a plus où aller (bloquée) : victoire des Noirs !",
+    };
+  }
+
+  // 3. Stalemate / Blocking check for the current player
+  // In Fanorona, a player with no legal moves on their turn loses.
   const legalMoves = getLegalMoves(state);
   if (legalMoves.length === 0 && !state.captureSequence) {
     const winner: Player = state.currentPlayer === "white" ? "black" : "white";

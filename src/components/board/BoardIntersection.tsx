@@ -4,14 +4,12 @@
  * Positions pieces and click targets with full touch and keyboard accessibility.
  */
 
-import { AnimatePresence } from "motion/react";
 import React from "react";
 import { toAlgebraic } from "../../game/board/boardGraph";
 import { BoardTheme, Piece, Position } from "../../game/types/gameTypes";
 import { sound } from "../../services/audio/soundSynthesizer";
 import { getBoardTheme } from "../../services/theme/boardThemes";
 import { BOARD_SVG_HEIGHT, BOARD_SVG_WIDTH, getCoordinates } from "./BoardGridSvg";
-import { PieceStone } from "./PieceStone";
 
 export interface BoardIntersectionProps {
   position: Position;
@@ -122,35 +120,17 @@ export const BoardIntersection: React.FC<BoardIntersectionProps> = React.memo(({
         </div>
       )}
 
-      {/* Game Piece with Smooth Exit/Entrance */}
-      <AnimatePresence mode="wait">
-        {piece && (
-          <div
-            key={`stone-${piece.id}`}
-            className="relative w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 xl:w-16 xl:h-16 2xl:w-20 2xl:h-20 pointer-events-none flex items-center justify-center"
-          >
-            <PieceStone
-              player={piece.player}
-              isSelected={isSelected || Boolean(isPendingOrigin)}
-              isInCaptureSequence={isInCaptureSequence}
-              isCapturableTarget={isCapturableTarget || Boolean(isPendingCaptureSide)}
-              theme={theme}
-            />
-
-            {/* Pending Capture Choice Candidate Floating Indicator */}
-            {isPendingCaptureSide && (
-              <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                {/* Pulsing ring aura */}
-                <div className={`absolute w-11 h-11 sm:w-13 sm:h-13 md:w-15 md:h-15 lg:w-18 lg:h-18 xl:w-22 xl:h-22 rounded-full border-2 ${themeDef.indicators.captureDestinationRing} animate-pulse`} />
-                {/* Badge */}
-                <div className={`absolute -top-3.5 sm:-top-4 md:-top-5 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-md ${themeDef.indicators.choiceBadgeBg} ${themeDef.indicators.choiceBadgeText} text-[9px] sm:text-[10px] md:text-xs font-serif font-bold tracking-tight shadow-[0_2px_8px_rgba(0,0,0,0.9)] flex items-center gap-1 whitespace-nowrap animate-bounce`}>
-                  <span>🎯 Chasser</span>
-                </div>
-              </div>
-            )}
+      {/* Pending Capture Choice Candidate Floating Indicator */}
+      {isPendingCaptureSide && (
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-30">
+          {/* Pulsing ring aura */}
+          <div className={`absolute w-11 h-11 sm:w-13 sm:h-13 md:w-15 md:h-15 lg:w-18 lg:h-18 xl:w-22 xl:h-22 rounded-full border-2 ${themeDef.indicators.captureDestinationRing} animate-pulse`} />
+          {/* Badge */}
+          <div className={`absolute -top-3.5 sm:-top-4 md:-top-5 px-1.5 py-0.5 sm:px-2 sm:py-0.5 rounded-md ${themeDef.indicators.choiceBadgeBg} ${themeDef.indicators.choiceBadgeText} text-[9px] sm:text-[10px] md:text-xs font-serif font-bold tracking-tight shadow-[0_2px_8px_rgba(0,0,0,0.9)] flex items-center gap-1 whitespace-nowrap animate-bounce`}>
+            <span>🎯 Chasser</span>
           </div>
-        )}
-      </AnimatePresence>
+        </div>
+      )}
     </button>
   );
 });

@@ -5,6 +5,7 @@
  * Royal Malagasy Rosewood, and Contemporary Slate.
  */
 
+import type React from "react";
 import { BoardTheme } from "../../game/types/gameTypes";
 
 export interface ThemeDefinition {
@@ -61,10 +62,10 @@ export interface ThemeDefinition {
     selectionRing: string;
     selectionGlow: string;
     captureDestinationRing: string;
-    captureDestinationBg: string;
+    captureDestinationBg?: string;
     captureDestinationDot: string;
     paikaDestinationRing: string;
-    paikaDestinationBg: string;
+    paikaDestinationBg?: string;
     paikaDestinationDot: string;
     comboRing: string;
     choiceBadgeBg: string;

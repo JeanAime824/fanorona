@@ -1,0 +1,72 @@
+{
+  "entities": {
+    "UserProfile": {
+      "title": "UserProfile",
+      "description": "Profile record for authenticated Fanorona players",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "photoURL": { "type": "string" },
+        "createdAt": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["id", "email", "displayName"]
+    },
+    "UserStats": {
+      "title": "UserStats",
+      "description": "Player cumulative match statistics and preferences",
+      "type": "object",
+      "properties": {
+        "userId": { "type": "string" },
+        "gamesPlayed": { "type": "number" },
+        "gamesWon": { "type": "number" },
+        "gamesLost": { "type": "number" },
+        "gamesDrawn": { "type": "number" },
+        "totalCaptures": { "type": "number" },
+        "speedModeEnabled": { "type": "boolean" },
+        "turnTimeLimit": { "type": "number" },
+        "theme": { "type": "string" },
+        "pieceTexture": { "type": "string" },
+        "playerNameWhite": { "type": "string" },
+        "playerNameBlack": { "type": "string" },
+        "updatedAt": { "type": "string" }
+      },
+      "required": ["userId", "gamesPlayed", "gamesWon", "gamesLost", "gamesDrawn"]
+    },
+    "GameRecord": {
+      "title": "GameRecord",
+      "description": "Match history record for completed Fanorona games",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "gameMode": { "type": "string" },
+        "winner": { "type": "string" },
+        "difficulty": { "type": "string" },
+        "turnNumber": { "type": "number" },
+        "capturedWhite": { "type": "number" },
+        "capturedBlack": { "type": "number" },
+        "speedMode": { "type": "boolean" },
+        "reason": { "type": "string" },
+        "createdAt": { "type": "string" }
+      },
+      "required": ["id", "userId", "gameMode", "winner", "turnNumber"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "UserProfile",
+      "description": "User profile document owned exclusively by the authenticated player"
+    },
+    "/users/{userId}/stats/main": {
+      "schema": "UserStats",
+      "description": "User statistics and synchronized settings owned by the user"
+    },
+    "/users/{userId}/games/{gameId}": {
+      "schema": "GameRecord",
+      "description": "Historical record of finished matches for the player"
+    }
+  }
+}

@@ -4,24 +4,35 @@
  * Styled with an authentic board game club aesthetic.
  */
 
-import { Bot, CheckCircle2, ChevronRight, User } from "lucide-react";
+import { Bot, CheckCircle2, ChevronRight, Clock, User } from "lucide-react";
 import React from "react";
 import { countPieces } from "../../game/board/initialBoard";
 import { GameState } from "../../game/types/gameTypes";
 import { formatDifficulty, getStatusInstruction } from "../../utils/formatters";
 import { Badge } from "../ui/Badge";
 import { Button } from "../ui/Button";
+import { TurnTimerBar } from "./TurnTimerBar";
 
 export interface GameStatusPanelProps {
   gameState: GameState;
   isAiThinking: boolean;
   onEndTurn: () => void;
+  speedModeEnabled?: boolean;
+  turnTimeLimit?: number;
+  timeRemaining?: number;
+  onToggleSpeedMode?: () => void;
+  onSetTurnTimeLimit?: (seconds: number) => void;
 }
 
 export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
   gameState,
   isAiThinking,
   onEndTurn,
+  speedModeEnabled = false,
+  turnTimeLimit = 30,
+  timeRemaining = 30,
+  onToggleSpeedMode,
+  onSetTurnTimeLimit,
 }) => {
   const {
     currentPlayer,
@@ -54,9 +65,22 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
   );
 
   return (
-    <div className="w-full bg-[#141210] border border-[#2E241C] rounded-2xl p-4 sm:p-5 shadow-2xl shadow-black/80 ring-1 ring-white/5">
-      {/* Top row: Players & Pieces with Physical Tactile Miniature Stones */}
-      <div className="grid grid-cols-2 gap-3 mb-4">
+    <div className="w-full bg-[#141210] border border-[#2E241C] rounded-2xl p-4 sm:p-5 shadow-2xl shadow-black/80 ring-1 ring-white/5 space-y-4">
+      {/* Turn Countdown Timer / Speed Mode Bar (Configurable directly in Game View) */}
+      {onToggleSpeedMode && onSetTurnTimeLimit && (
+        <TurnTimerBar
+          speedModeEnabled={speedModeEnabled}
+          turnTimeLimit={turnTimeLimit}
+          timeRemaining={timeRemaining}
+          activePlayer={currentPlayer}
+          isGameOver={status === "game_over"}
+          onToggleSpeedMode={onToggleSpeedMode}
+          onSetTurnTimeLimit={onSetTurnTimeLimit}
+        />
+      )}
+
+      {/* Players & Pieces with Tactile Miniature Stones and Live Timer Badges */}
+      <div className="grid grid-cols-2 gap-3">
         {/* White Player Card */}
         <div
           className={`p-3.5 rounded-xl border transition-all duration-200 flex items-center justify-between ${
@@ -82,11 +106,25 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
                   </>
                 )}
               </div>
-              <div className="text-sm font-serif font-bold text-[#EFEBE4]">
-                Blancs
+              <div className="text-sm font-serif font-bold text-[#EFEBE4] flex items-center gap-1.5 flex-wrap">
+                <span>Blancs</span>
                 {pieceDiff > 0 && (
-                  <span className="ml-1.5 text-[10px] font-mono text-[#D4AF37]">
+                  <span className="text-[10px] font-mono text-[#D4AF37]">
                     +{pieceDiff}
+                  </span>
+                )}
+                {speedModeEnabled && isWhite && status === "playing" && (
+                  <span
+                    className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                      timeRemaining <= 5
+                        ? "bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse"
+                        : timeRemaining <= 10
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                        : "bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40"
+                    }`}
+                  >
+                    <Clock className="w-2.5 h-2.5" />
+                    {timeRemaining}s
                   </span>
                 )}
               </div>
@@ -127,11 +165,25 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
                   </>
                 )}
               </div>
-              <div className="text-sm font-serif font-bold text-[#EFEBE4]">
-                Noirs
+              <div className="text-sm font-serif font-bold text-[#EFEBE4] flex items-center gap-1.5 flex-wrap">
+                <span>Noirs</span>
                 {pieceDiff < 0 && (
-                  <span className="ml-1.5 text-[10px] font-mono text-[#D4AF37]">
+                  <span className="text-[10px] font-mono text-[#D4AF37]">
                     +{-pieceDiff}
+                  </span>
+                )}
+                {speedModeEnabled && !isWhite && status === "playing" && (
+                  <span
+                    className={`inline-flex items-center gap-1 text-[10px] font-mono font-bold px-1.5 py-0.5 rounded ${
+                      timeRemaining <= 5
+                        ? "bg-rose-500/30 text-rose-300 border border-rose-500/50 animate-pulse"
+                        : timeRemaining <= 10
+                        ? "bg-amber-500/20 text-amber-300 border border-amber-500/40"
+                        : "bg-[#D4AF37]/20 text-[#D4AF37] border border-[#D4AF37]/40"
+                    }`}
+                  >
+                    <Clock className="w-2.5 h-2.5" />
+                    {timeRemaining}s
                   </span>
                 )}
               </div>

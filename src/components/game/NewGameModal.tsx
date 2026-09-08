@@ -3,7 +3,7 @@
  * Dialog allowing configuration of game mode, AI difficulty, and starting player color.
  */
 
-import { Bot, Play, Sparkles, User, Users } from "lucide-react";
+import { Bot, Clock, Play, Sparkles, User, Users, Zap } from "lucide-react";
 import React, { useState } from "react";
 import { AiDifficulty, GameMode, Player } from "../../game/types/gameTypes";
 import { Button } from "../ui/Button";
@@ -12,8 +12,16 @@ import { Modal } from "../ui/Modal";
 export interface NewGameModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onStartGame: (mode: GameMode, difficulty: AiDifficulty, playerColor: Player) => void;
+  onStartGame: (
+    mode: GameMode,
+    difficulty: AiDifficulty,
+    playerColor: Player,
+    speedMode?: boolean,
+    timeLimit?: number
+  ) => void;
   initialDifficulty?: AiDifficulty;
+  initialSpeedMode?: boolean;
+  initialTimeLimit?: number;
 }
 
 export const NewGameModal: React.FC<NewGameModalProps> = ({
@@ -21,17 +29,21 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   onClose,
   onStartGame,
   initialDifficulty = "medium",
+  initialSpeedMode = false,
+  initialTimeLimit = 30,
 }) => {
   const [selectedMode, setSelectedMode] = useState<GameMode>("ai");
   const [selectedDifficulty, setSelectedDifficulty] = useState<AiDifficulty>(initialDifficulty);
   const [selectedColor, setSelectedColor] = useState<Player>("white");
+  const [speedMode, setSpeedMode] = useState<boolean>(initialSpeedMode);
+  const [timeLimit, setTimeLimit] = useState<number>(initialTimeLimit);
 
   if (!isOpen) return null;
 
   const handleStart = () => {
     // If player chooses White in AI mode, AI plays Black; and vice versa
     const aiColor: Player = selectedColor === "white" ? "black" : "white";
-    onStartGame(selectedMode, selectedDifficulty, aiColor);
+    onStartGame(selectedMode, selectedDifficulty, aiColor, speedMode, timeLimit);
     onClose();
   };
 
@@ -157,6 +169,67 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               </div>
             </button>
           </div>
+        </div>
+
+        {/* Speed Mode & Countdown Timer Configuration */}
+        <div className="p-3.5 rounded-xl border border-[#3E3224] bg-[#14110E] space-y-3">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <div className={`w-6 h-6 rounded-lg flex items-center justify-center ${
+                speedMode ? "bg-[#D4AF37] text-black" : "bg-white/10 text-white/40"
+              }`}>
+                <Zap className={`w-3.5 h-3.5 ${speedMode ? "fill-current" : ""}`} />
+              </div>
+              <div>
+                <div className="text-xs font-bold text-[#E6E6E6]">Mode Vitesse (Chronomètre)</div>
+                <div className="text-[10px] text-white/40">Limite de temps par coup avec défaite au temps</div>
+              </div>
+            </div>
+
+            <button
+              type="button"
+              onClick={() => setSpeedMode(!speedMode)}
+              className={`w-11 h-6 rounded-full transition-colors relative cursor-pointer focus:outline-none focus:ring-2 focus:ring-[#D4AF37] ${
+                speedMode ? "bg-[#D4AF37]" : "bg-white/20"
+              }`}
+            >
+              <div
+                className={`w-4 h-4 rounded-full bg-white transition-transform absolute top-1 ${
+                  speedMode ? "translate-x-6" : "translate-x-1"
+                }`}
+              />
+            </button>
+          </div>
+
+          {speedMode && (
+            <div className="pt-2 border-t border-white/5 space-y-1.5">
+              <div className="text-[10px] font-semibold text-white/50 uppercase tracking-wider">
+                Temps par coup
+              </div>
+              <div className="grid grid-cols-5 gap-1.5">
+                {[
+                  { sec: 10, label: "10s" },
+                  { sec: 15, label: "15s" },
+                  { sec: 30, label: "30s" },
+                  { sec: 45, label: "45s" },
+                  { sec: 60, label: "60s" },
+                ].map((item) => (
+                  <button
+                    key={item.sec}
+                    type="button"
+                    onClick={() => setTimeLimit(item.sec)}
+                    className={`py-1.5 rounded-lg border text-center font-mono text-xs transition-all cursor-pointer ${
+                      timeLimit === item.sec
+                        ? "bg-[#D4AF37] text-black border-[#D4AF37] font-bold"
+                        : "bg-white/5 hover:bg-white/10 border-white/10 text-white/70"
+                    }`}
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Action buttons */}

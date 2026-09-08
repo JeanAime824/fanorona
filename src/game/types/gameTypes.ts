@@ -81,6 +81,7 @@ export interface GameState {
   turnNumber: number;
   aiPlayerColor?: Player;
   mandatoryCaptureActive: boolean;
+  reason?: string;
 }
 
 export type BoardTheme =
@@ -90,6 +91,8 @@ export type BoardTheme =
   | "malagasy_wood"
   | "slate_contemporary";
 
+export type PieceTexture = "wooden" | "stone";
+
 export interface GameSettings {
   soundEnabled: boolean;
   animationsEnabled: boolean;
@@ -97,6 +100,11 @@ export interface GameSettings {
   aiDifficulty: AiDifficulty;
   confirmNewGame: boolean;
   theme: BoardTheme;
+  pieceTexture: PieceTexture;
+  speedModeEnabled: boolean;
+  turnTimeLimit: number; // Duration in seconds per turn (e.g. 10, 15, 30, 45, 60)
+  playerNameWhite?: string;
+  playerNameBlack?: string;
 }
 
 export interface GameStats {

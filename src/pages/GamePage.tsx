@@ -11,6 +11,7 @@ import { GameOverModal } from "../components/game/GameOverModal";
 import { GameStatusPanel } from "../components/game/GameStatusPanel";
 import { MoveHistoryPanel } from "../components/game/MoveHistoryPanel";
 import { NewGameModal } from "../components/game/NewGameModal";
+import { VictoryOverlay } from "../components/game/VictoryOverlay";
 import { Button } from "../components/ui/Button";
 import { Modal } from "../components/ui/Modal";
 import { AiDifficulty, GameMode, Player } from "../game/types/gameTypes";
@@ -33,18 +34,54 @@ export const GamePage: React.FC = () => {
     handleUndo,
     handleRedo,
     handleResign,
+    updateSettings,
+    timeRemaining,
+    toggleSpeedMode,
+    setTurnTimeLimit,
   } = useFanoronaGame();
 
   const [isNewGameOpen, setIsNewGameOpen] = useState(false);
   const [isGameOverModalOpen, setIsGameOverModalOpen] = useState(false);
+  const [isVictoryOverlayOpen, setIsVictoryOverlayOpen] = useState(false);
   const [isResignConfirmOpen, setIsResignConfirmOpen] = useState(false);
 
-  // Trigger game over modal when status changes to game_over
+  // Trigger celebration overlay or game over modal when status changes to game_over
   useEffect(() => {
     if (gameState.status === "game_over") {
-      setIsGameOverModalOpen(true);
+      if (gameState.winner && gameState.winner !== "draw") {
+        setIsVictoryOverlayOpen(true);
+        setIsGameOverModalOpen(false);
+      } else {
+        setIsGameOverModalOpen(true);
+        setIsVictoryOverlayOpen(false);
+      }
+    } else {
+      setIsVictoryOverlayOpen(false);
+      setIsGameOverModalOpen(false);
     }
-  }, [gameState.status]);
+  }, [gameState.status, gameState.winner]);
+
+  const getWinnerDisplayName = (): string => {
+    if (!gameState.winner || gameState.winner === "draw") return "";
+    if (gameState.gameMode === "ai") {
+      if (gameState.winner === gameState.aiPlayerColor) {
+        return "Intelligence Artificielle";
+      }
+      const customName =
+        gameState.winner === "white"
+          ? settings.playerNameWhite
+          : settings.playerNameBlack;
+      return customName && customName.trim() ? customName.trim() : "Joueur";
+    }
+    if (gameState.winner === "white") {
+      return settings.playerNameWhite && settings.playerNameWhite.trim()
+        ? settings.playerNameWhite.trim()
+        : "Joueur Blanc";
+    }
+    return settings.playerNameBlack && settings.playerNameBlack.trim()
+      ? settings.playerNameBlack.trim()
+      : "Joueur Noir";
+  };
 
   // Keyboard shortcut handlers
   useEffect(() => {
@@ -91,6 +128,16 @@ export const GamePage: React.FC = () => {
         onResign={() => setIsResignConfirmOpen(true)}
         onNewGame={() => setIsNewGameOpen(true)}
         isGameOver={gameState.status === "game_over"}
+        speedModeEnabled={settings.speedModeEnabled}
+        turnTimeLimit={settings.turnTimeLimit}
+        onToggleSpeedMode={toggleSpeedMode}
+        onShowVictory={() => {
+          if (gameState.winner && gameState.winner !== "draw") {
+            setIsVictoryOverlayOpen(true);
+          } else {
+            setIsGameOverModalOpen(true);
+          }
+        }}
       />
 
       {/* Main Game Board - Occupies 95% of Screen */}
@@ -100,6 +147,8 @@ export const GamePage: React.FC = () => {
           targetablePositions={targetablePositions}
           pendingChoice={pendingChoice}
           theme={settings.theme}
+          pieceTexture={settings.pieceTexture}
+          animationsEnabled={settings.animationsEnabled}
           onSelectPosition={selectPosition}
           onResolveChoice={resolveChoice}
           onCancelChoice={cancelChoice}
@@ -114,6 +163,11 @@ export const GamePage: React.FC = () => {
             gameState={gameState}
             isAiThinking={isAiThinking}
             onEndTurn={handleEndTurn}
+            speedModeEnabled={settings.speedModeEnabled}
+            turnTimeLimit={settings.turnTimeLimit}
+            timeRemaining={timeRemaining}
+            onToggleSpeedMode={toggleSpeedMode}
+            onSetTurnTimeLimit={setTurnTimeLimit}
           />
         </div>
 
@@ -122,7 +176,28 @@ export const GamePage: React.FC = () => {
         </div>
       </div>
 
-      {/* Game Over Celebration Modal */}
+      {/* Victory Celebration Animated Overlay */}
+      <VictoryOverlay
+        isOpen={isVictoryOverlayOpen}
+        gameState={gameState}
+        winnerName={getWinnerDisplayName()}
+        isSpeedMode={settings.speedModeEnabled}
+        onRestartImmediately={() => {
+          setIsVictoryOverlayOpen(false);
+          startNewGame(
+            gameState.gameMode,
+            gameState.difficulty,
+            gameState.aiPlayerColor
+          );
+        }}
+        onReviewBoard={() => setIsVictoryOverlayOpen(false)}
+        onOpenNewGameModal={() => {
+          setIsVictoryOverlayOpen(false);
+          setIsNewGameOpen(true);
+        }}
+      />
+
+      {/* Game Over Modal (Draws and detailed inspection) */}
       <GameOverModal
         gameState={gameState}
         isOpen={isGameOverModalOpen}
@@ -141,10 +216,18 @@ export const GamePage: React.FC = () => {
       <NewGameModal
         isOpen={isNewGameOpen}
         onClose={() => setIsNewGameOpen(false)}
-        onStartGame={(mode: GameMode, diff: AiDifficulty, playerColor: Player) => {
+        onStartGame={(mode: GameMode, diff: AiDifficulty, playerColor: Player, speedMode?: boolean, timeLimit?: number) => {
+          if (typeof speedMode === "boolean") {
+            updateSettings({
+              speedModeEnabled: speedMode,
+              turnTimeLimit: timeLimit || settings.turnTimeLimit,
+            });
+          }
           startNewGame(mode, diff, playerColor);
         }}
         initialDifficulty={settings.aiDifficulty}
+        initialSpeedMode={settings.speedModeEnabled}
+        initialTimeLimit={settings.turnTimeLimit}
       />
 
       {/* Resignation Confirmation Modal */}

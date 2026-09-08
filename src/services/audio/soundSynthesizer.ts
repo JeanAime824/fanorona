@@ -209,6 +209,77 @@ class SoundSynthesizer {
       osc.stop(startTime + 0.65);
     });
   }
+
+  /**
+   * Crisp metronome tick for countdown timer urgency
+   */
+  public playTick(isUrgent: boolean = false): void {
+    if (!this.soundEnabled) return;
+    queueMicrotask(() => {
+      try {
+        const ctx = this.initContext();
+        if (!ctx) return;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = isUrgent ? "triangle" : "sine";
+        const freq = isUrgent ? 980 : 720;
+        osc.frequency.setValueAtTime(freq, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(freq * 0.7, ctx.currentTime + 0.04);
+
+        gain.gain.setValueAtTime(isUrgent ? 0.12 : 0.06, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.045);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.045);
+      } catch {
+        // fail silently
+      }
+    });
+  }
+
+  /**
+   * Distinctive gong / low chime when player runs out of time (timeout)
+   */
+  public playTimeout(): void {
+    if (!this.soundEnabled) return;
+    queueMicrotask(() => {
+      try {
+        const ctx = this.initContext();
+        if (!ctx) return;
+
+        const osc1 = ctx.createOscillator();
+        const osc2 = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc1.type = "sawtooth";
+        osc1.frequency.setValueAtTime(180, ctx.currentTime);
+        osc1.frequency.exponentialRampToValueAtTime(90, ctx.currentTime + 0.5);
+
+        osc2.type = "sine";
+        osc2.frequency.setValueAtTime(130, ctx.currentTime);
+        osc2.frequency.exponentialRampToValueAtTime(65, ctx.currentTime + 0.5);
+
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.55);
+
+        osc1.connect(gain);
+        osc2.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc1.start();
+        osc2.start();
+        osc1.stop(ctx.currentTime + 0.55);
+        osc2.stop(ctx.currentTime + 0.55);
+      } catch {
+        // fail silently
+      }
+    });
+  }
 }
 
 export const sound = new SoundSynthesizer();
