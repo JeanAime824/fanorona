@@ -152,7 +152,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
         </div>
         <h2 className="text-xl font-serif font-bold text-[#F5F3EE]">Espace Amis & Défis</h2>
         <p className="text-xs text-[#9E9890]">
-          Connectez-vous pour ajouter des amis avec leur ID à 6 caractères et lancer des parties classées en temps réel.
+          Connectez-vous pour ajouter des amis avec leur ID à 6 chiffres et lancer des parties classées en temps réel.
         </p>
         <div className="flex justify-center gap-3 pt-2">
           <Button variant="primary" size="md" onClick={() => onNavigate("connexion")}>
@@ -283,7 +283,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
               <Users className="w-10 h-10 mx-auto text-[#9E9890]/40" />
               <div className="text-sm font-semibold text-[#F5F3EE]">Aucun ami pour le moment</div>
               <p className="text-xs text-[#9E9890] max-w-sm mx-auto">
-                Recherchez des joueurs avec leur pseudo ou leur identifiant à 6 caractères pour les ajouter à votre liste.
+                Recherchez des joueurs avec leur pseudo ou leur identifiant à 6 chiffres pour les ajouter à votre liste.
               </p>
               <Button variant="secondary" size="sm" onClick={() => setActiveTab("search")}>
                 Trouver un joueur
@@ -488,7 +488,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Rechercher par ID Joueur (ex: F7K2M9) ou pseudo..."
+              placeholder="Rechercher par ID Joueur (ex: 849201) ou pseudo..."
               autoFocus
               className="w-full pl-10 pr-4 py-3 bg-[#141210] border border-[#C8A452]/40 rounded-xl text-sm text-[#F5F3EE] placeholder-[#6B655E] focus:outline-none focus:border-[#C8A452] shadow-xl"
             />
@@ -496,7 +496,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           </div>
 
           <div className="text-[11px] text-[#9E9890]">
-            💡 <strong className="text-[#F5F3EE]">Conseil :</strong> La recherche par code ID à 6 caractères (ex: <span className="font-mono text-[#C8A452]">F9K2M7</span>) affiche directement le joueur exact.
+            💡 <strong className="text-[#F5F3EE]">Conseil :</strong> La recherche par code ID à 6 chiffres (ex: <span className="font-mono text-[#C8A452]">982401</span>) affiche directement le joueur exact.
           </div>
 
           {/* Results */}

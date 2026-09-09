@@ -35,6 +35,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onNavigate }) => {
   const [isEditing, setIsEditing] = useState(false);
   const [newUsername, setNewUsername] = useState("");
   const [saveSuccess, setSaveSuccess] = useState(false);
+  const [saveError, setSaveError] = useState<string | null>(null);
 
   useEffect(() => {
     if (user) {
@@ -74,13 +75,15 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onNavigate }) => {
   const handleSaveProfile = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newUsername.trim()) return;
+    setSaveError(null);
     try {
       await updateProfile({ username: newUsername.trim() });
       setIsEditing(false);
       setSaveSuccess(true);
       setTimeout(() => setSaveSuccess(false), 2500);
     } catch (err: any) {
-      alert(err?.message || "Erreur lors de la mise à jour");
+      setSaveError(err?.message || "Erreur lors de la mise à jour");
+      setTimeout(() => setSaveError(null), 4000);
     }
   };
 
@@ -155,6 +158,13 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onNavigate }) => {
                   <span>Modifié !</span>
                 </span>
               )}
+
+              {saveError && (
+                <span className="text-xs text-red-400 flex items-center gap-1">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-400 shrink-0" />
+                  <span>{saveError}</span>
+                </span>
+              )}
             </div>
 
             {/* Unique 6-character Player ID Badge with Copy button */}
@@ -172,7 +182,7 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onNavigate }) => {
                 type="button"
                 onClick={handleCopyId}
                 className="px-3 py-1.5 rounded-xl bg-[#C8A452]/10 hover:bg-[#C8A452]/20 border border-[#C8A452]/30 text-xs font-medium text-[#C8A452] hover:text-[#D4AF37] transition-all flex items-center gap-1.5 cursor-pointer"
-                title="Copier mon ID de 6 caractères"
+                title="Copier mon ID à 6 chiffres"
               >
                 {copied ? (
                   <>

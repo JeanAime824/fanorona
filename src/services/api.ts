@@ -98,7 +98,8 @@ function normalizeUserPayload(raw: any, fallbackName: string, fallbackEmail?: st
   const uid = u.id || u.uid || `usr_${Date.now()}`;
   const uname = u.username || u.displayName || fallbackName;
   const uemail = u.email || fallbackEmail || `${uname.toLowerCase().replace(/[^a-z0-9]/g, "")}@fanorona.local`;
-  const pid = u.player_id || (uid.length >= 6 ? uid.substring(uid.length - 6).toUpperCase() : "FANORO");
+  const pid =
+    u.player_id || Math.floor(100000 + Math.random() * 900000).toString();
   const avatar = u.avatar_url || u.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(uname)}`;
 
   return {

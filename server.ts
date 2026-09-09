@@ -12,17 +12,12 @@ import { GameState, Move, Player } from "./src/game/types/gameTypes";
 const JWT_SECRET = process.env.JWT_SECRET || "fanorona_secret_jwt_key_madagascar_2026";
 const JWT_EXPIRES_IN = "7d";
 
-// Allowed characters for 6-character Player ID (excluding O, 0, I, 1, L to prevent ambiguity)
-const PLAYER_ID_CHARS = "ABCDEFGHJKMNPQRSTUVWXYZ23456789";
-
+// Generates unique 6-digit numeric Player ID (e.g. 849201)
 function generate6CharPlayerId(existingIds: Set<string>): string {
   let id = "";
   let attempts = 0;
   do {
-    id = "";
-    for (let i = 0; i < 6; i++) {
-      id += PLAYER_ID_CHARS.charAt(Math.floor(Math.random() * PLAYER_ID_CHARS.length));
-    }
+    id = Math.floor(100000 + Math.random() * 900000).toString();
     attempts++;
   } while (existingIds.has(id) && attempts < 100);
   return id;
@@ -170,13 +165,13 @@ function calculateIsaChange(playerIsa: number, opponentIsa: number, result: 1 | 
 function seedDefaultData() {
   const existingPlayerIds = new Set<string>();
   const seedUsersData = [
-    { username: "aimej519", email: "aimej519@gmail.com", isa: 1650, pid: "A519MG" },
-    { username: "FanoronaPro", email: "pro@fanorona.mg", isa: 1824, pid: "F9K2M7" },
-    { username: "Malagasy", email: "malagasy@fanorona.mg", isa: 1762, pid: "M4T8QA" },
-    { username: "JeanAime", email: "jeanaime@fanorona.mg", isa: 1640, pid: "F7K2M9" },
-    { username: "Tiana", email: "tiana@fanorona.mg", isa: 1588, pid: "K4P8XQ" },
-    { username: "AndryGasy", email: "andry@fanorona.mg", isa: 1450, pid: "A7P2M9" },
-    { username: "SoaLaza", email: "soa@fanorona.mg", isa: 1320, pid: "S3X9KP" },
+    { username: "aimej519", email: "aimej519@gmail.com", isa: 1650, pid: "519204" },
+    { username: "FanoronaPro", email: "pro@fanorona.mg", isa: 1824, pid: "982401" },
+    { username: "Malagasy", email: "malagasy@fanorona.mg", isa: 1762, pid: "762015" },
+    { username: "JeanAime", email: "jeanaime@fanorona.mg", isa: 1640, pid: "640822" },
+    { username: "Tiana", email: "tiana@fanorona.mg", isa: 1588, pid: "588319" },
+    { username: "AndryGasy", email: "andry@fanorona.mg", isa: 1450, pid: "450912" },
+    { username: "SoaLaza", email: "soa@fanorona.mg", isa: 1320, pid: "320147" },
   ];
 
   const defaultHash = bcrypt.hashSync("Fanorona2026!", 8);

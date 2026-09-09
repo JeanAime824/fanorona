@@ -14,6 +14,8 @@ import {
   Check,
   Trophy,
   UserPlus,
+  ArrowRight,
+  ShieldAlert,
 } from "lucide-react";
 import { useAuth } from "../../context/AuthContext";
 import { Button } from "../ui/Button";
@@ -27,6 +29,8 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
   const [isOpen, setIsOpen] = useState(false);
   const [copied, setCopied] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
+
+  const isGuest = Boolean(user?.id?.startsWith("gst_") || user?.username?.startsWith("Invité_"));
 
   // Close menu on outside click
   useEffect(() => {
@@ -124,7 +128,14 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
               className="w-11 h-11 rounded-xl object-cover border border-[#C8A452]/60 bg-[#1A1816]"
             />
             <div className="overflow-hidden flex-1">
-              <div className="text-xs font-bold text-[#F5F3EE] truncate">{user.username}</div>
+              <div className="flex items-center gap-1.5">
+                <span className="text-xs font-bold text-[#F5F3EE] truncate">{user.username}</span>
+                {isGuest && (
+                  <span className="text-[9px] font-medium uppercase px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    Invité
+                  </span>
+                )}
+              </div>
               <div className="flex items-center justify-between pt-0.5">
                 <span className="text-[11px] font-mono font-bold text-[#C8A452]">
                   ID: {user.player_id}
@@ -140,6 +151,27 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
               </div>
             </div>
           </div>
+
+          {/* Guest Upgrade Banner */}
+          {isGuest && (
+            <div className="p-2.5 rounded-xl bg-[#C8A452]/10 border border-[#C8A452]/30 space-y-1.5">
+              <div className="text-[11px] font-semibold text-[#C8A452] flex items-center justify-between">
+                <span>Session Invité</span>
+                <span className="text-[9px] text-[#9E9890]">Non synchronisé</span>
+              </div>
+              <p className="text-[10px] text-[#9E9890] leading-snug">
+                Créez votre compte joueur officiel pour conserver votre cote Isa et vos statistiques.
+              </p>
+              <button
+                type="button"
+                onClick={() => handleNavigateTo("inscription")}
+                className="w-full py-1.5 px-2.5 rounded-lg bg-[#C8A452] hover:bg-[#D4AF37] text-black font-semibold text-[11px] transition-all flex items-center justify-between cursor-pointer"
+              >
+                <span>Créer mon compte officiel</span>
+                <ArrowRight className="w-3 h-3" />
+              </button>
+            </div>
+          )}
 
           {/* Isa Rating Pill */}
           <div className="p-2.5 rounded-xl bg-[#0D0B0A] border border-[#C8A452]/20 flex items-center justify-between">

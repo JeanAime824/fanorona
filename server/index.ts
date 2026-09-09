@@ -64,14 +64,9 @@ const activeGames = new Map<string, ServerGameSession>();
 const registeredUsers = new Map<string, ServerUser>();
 const friendships = new Map<string, ServerFriendship>();
 
-// Helper to generate 6-character player ID
+// Helper to generate 6-digit player ID (e.g. 849201)
 function generatePlayerId(): string {
-  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-  let result = "";
-  for (let i = 0; i < 6; i++) {
-    result += chars.charAt(Math.floor(Math.random() * chars.length));
-  }
-  return result;
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 // User Registration API

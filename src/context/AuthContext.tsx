@@ -37,6 +37,7 @@ interface AuthContextType {
   register: (username: string, email: string, password?: string, avatarUrl?: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signInWithUsername: (username: string) => Promise<void>;
+  signInAsGuest: () => Promise<void>;
   logout: () => Promise<void>;
   refreshProfile: () => Promise<void>;
   updateProfile: (data: { username?: string; avatar_url?: string }) => Promise<void>;
@@ -168,6 +169,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     await signInWithUsername(`Joueur_${Math.floor(1000 + Math.random() * 9000)}`);
   };
 
+  const signInAsGuest = async () => {
+    const randomSuffix = Math.floor(1000 + Math.random() * 9000);
+    const randomPid = Math.floor(100000 + Math.random() * 900000).toString();
+    const guestUser: PlatformUser = {
+      id: `gst_${Date.now()}_${randomSuffix}`,
+      uid: `gst_${Date.now()}_${randomSuffix}`,
+      username: `Invité_${randomSuffix}`,
+      displayName: `Invité_${randomSuffix}`,
+      email: `invite_${randomSuffix}@fanorona.local`,
+      player_id: randomPid,
+      isa: 1200,
+      games_played: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      win_rate: 0,
+      avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=Invite_${randomSuffix}`,
+      photoURL: `https://api.dicebear.com/7.x/bottts/svg?seed=Invite_${randomSuffix}`,
+      created_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    };
+    const guestToken = `gst_token_${guestUser.id}`;
+    localStorage.setItem("fanorona_jwt_token", guestToken);
+    localStorage.setItem("fanorona_refresh_token", guestToken);
+    localStorage.setItem("fanorona_custom_user", JSON.stringify(guestUser));
+    setUser(guestUser);
+  };
+
   const logout = async () => {
     try {
       await api.logout();
@@ -242,6 +272,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         register,
         signInWithGoogle,
         signInWithUsername,
+        signInAsGuest,
         logout,
         refreshProfile,
         updateProfile,

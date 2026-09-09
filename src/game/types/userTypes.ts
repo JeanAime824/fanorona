@@ -7,7 +7,7 @@ export interface UserProfile {
   id: string;
   username: string;
   email: string;
-  player_id: string; // Exactly 6 uppercase alphanumeric characters (e.g. "F7K2M9")
+  player_id: string; // Exactly 6 digits (e.g. "849201")
   isa: number; // Initial 1200 Isa rating
   games_played: number;
   wins: number;
