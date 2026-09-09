@@ -148,7 +148,15 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
           <div className="text-[10px] font-semibold text-[#9E9890] uppercase tracking-wider mb-2 text-center">
             Comptes de démonstration rapide
           </div>
-          <div className="grid grid-cols-2 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+            <button
+              type="button"
+              onClick={() => handleQuickDemoLogin("aimej519")}
+              className="p-2 rounded-xl bg-[#C8A452]/10 hover:bg-[#C8A452]/20 border border-[#C8A452]/30 text-left transition-colors cursor-pointer"
+            >
+              <div className="text-xs font-semibold text-[#F5F3EE]">aimej519</div>
+              <div className="text-[10px] font-mono text-[#C8A452]">ID: A519MG · 1650 Isa</div>
+            </button>
             <button
               type="button"
               onClick={() => handleQuickDemoLogin("JeanAime")}
@@ -160,7 +168,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
             <button
               type="button"
               onClick={() => handleQuickDemoLogin("Tiana")}
-              className="p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-left transition-colors cursor-pointer"
+              className="p-2 rounded-xl bg-white/[0.03] hover:bg-white/[0.07] border border-white/10 text-left transition-colors cursor-pointer col-span-2 sm:col-span-1"
             >
               <div className="text-xs font-semibold text-[#F5F3EE]">Tiana</div>
               <div className="text-[10px] font-mono text-[#C8A452]">ID: K4P8XQ · 1588 Isa</div>

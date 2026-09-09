@@ -170,6 +170,7 @@ function calculateIsaChange(playerIsa: number, opponentIsa: number, result: 1 | 
 function seedDefaultData() {
   const existingPlayerIds = new Set<string>();
   const seedUsersData = [
+    { username: "aimej519", email: "aimej519@gmail.com", isa: 1650, pid: "A519MG" },
     { username: "FanoronaPro", email: "pro@fanorona.mg", isa: 1824, pid: "F9K2M7" },
     { username: "Malagasy", email: "malagasy@fanorona.mg", isa: 1762, pid: "M4T8QA" },
     { username: "JeanAime", email: "jeanaime@fanorona.mg", isa: 1640, pid: "F7K2M9" },
@@ -510,7 +511,7 @@ async function startServer() {
   // USERS SEARCH & PUBLIC PROFILES
   // ==========================================
 
-  app.get("/api/users/search/", optionalJwt, (req: Request, res: Response) => {
+  app.get(["/api/users/search", "/api/users/search/"], optionalJwt, (req: Request, res: Response) => {
     const q = ((req.query.q as string) || "").trim();
     if (!q) {
       return res.json([]);
@@ -576,7 +577,7 @@ async function startServer() {
     };
   }
 
-  app.get("/api/users/:playerId/", optionalJwt, (req: Request, res: Response) => {
+  app.get(["/api/users/:playerId", "/api/users/:playerId/"], optionalJwt, (req: Request, res: Response) => {
     const { playerId } = req.params;
     const user = usersByPlayerId.get(playerId.toUpperCase()) || users.get(playerId);
     if (!user) {
@@ -590,7 +591,7 @@ async function startServer() {
   // LEADERBOARD (GLOBAL RANKING)
   // ==========================================
 
-  app.get("/api/leaderboard/", (req: Request, res: Response) => {
+  app.get(["/api/leaderboard", "/api/leaderboard/"], (req: Request, res: Response) => {
     const allUsers = Array.from(users.values())
       .sort((a, b) => b.isa - a.isa)
       .map((u, idx) => ({
@@ -615,7 +616,7 @@ async function startServer() {
   // USER STATISTICS & RATING HISTORY
   // ==========================================
 
-  app.get("/api/statistics/me/", authenticateJwt, (req: Request, res: Response) => {
+  app.get(["/api/statistics/me", "/api/statistics/me/"], authenticateJwt, (req: Request, res: Response) => {
     const user = (req as any).user as UserDbRecord;
     const winRate =
       user.games_played > 0 ? Math.round((user.wins / user.games_played) * 1000) / 10 : 0;
@@ -629,7 +630,7 @@ async function startServer() {
     });
   });
 
-  app.get("/api/rating-history/me/", authenticateJwt, (req: Request, res: Response) => {
+  app.get(["/api/rating-history/me", "/api/rating-history/me/"], authenticateJwt, (req: Request, res: Response) => {
     const user = (req as any).user as UserDbRecord;
     const history = ratingHistories.get(user.id) || [];
     res.json(history.slice(-30));
@@ -639,7 +640,7 @@ async function startServer() {
   // FRIENDS SYSTEM
   // ==========================================
 
-  app.get("/api/friends/", authenticateJwt, (req: Request, res: Response) => {
+  app.get(["/api/friends", "/api/friends/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     const friendList: any[] = [];
 
@@ -663,7 +664,7 @@ async function startServer() {
     res.json(friendList);
   });
 
-  app.get("/api/friends/requests/", authenticateJwt, (req: Request, res: Response) => {
+  app.get(["/api/friends/requests", "/api/friends/requests/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     const received: any[] = [];
     const sent: any[] = [];
@@ -696,7 +697,7 @@ async function startServer() {
   });
 
   // Send friend request
-  app.post("/api/friends/request/", authenticateJwt, (req: Request, res: Response) => {
+  app.post(["/api/friends/request", "/api/friends/request/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     const { target_user_id, player_id } = req.body;
 
@@ -789,7 +790,7 @@ async function startServer() {
   });
 
   // Accept friend request
-  app.post("/api/friends/:id/accept/", authenticateJwt, (req: Request, res: Response) => {
+  app.post(["/api/friends/:id/accept", "/api/friends/:id/accept/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     const { id } = req.params;
     const request = friendRequests.get(id);
@@ -842,7 +843,7 @@ async function startServer() {
   });
 
   // Reject friend request
-  app.post("/api/friends/:id/reject/", authenticateJwt, (req: Request, res: Response) => {
+  app.post(["/api/friends/:id/reject", "/api/friends/:id/reject/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     const { id } = req.params;
     const request = friendRequests.get(id);
@@ -857,7 +858,7 @@ async function startServer() {
   });
 
   // Cancel friend request
-  app.post("/api/friends/:id/cancel/", authenticateJwt, (req: Request, res: Response) => {
+  app.post(["/api/friends/:id/cancel", "/api/friends/:id/cancel/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     const { id } = req.params;
     const request = friendRequests.get(id);
@@ -872,7 +873,7 @@ async function startServer() {
   });
 
   // Delete friend
-  app.delete("/api/friends/:id/", authenticateJwt, (req: Request, res: Response) => {
+  app.delete(["/api/friends/:id", "/api/friends/:id/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     const { id } = req.params;
 
@@ -902,7 +903,7 @@ async function startServer() {
   // NOTIFICATIONS SYSTEM
   // ==========================================
 
-  app.get("/api/notifications/", authenticateJwt, (req: Request, res: Response) => {
+  app.get(["/api/notifications", "/api/notifications/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     const userNotifs = Array.from(notifications.values())
       .filter((n) => n.recipient_id === currentUser.id)
@@ -912,7 +913,7 @@ async function startServer() {
     res.json(userNotifs);
   });
 
-  app.post("/api/notifications/:id/read/", authenticateJwt, (req: Request, res: Response) => {
+  app.post(["/api/notifications/:id/read", "/api/notifications/:id/read/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     const { id } = req.params;
     const notif = notifications.get(id);
@@ -924,7 +925,7 @@ async function startServer() {
     res.json({ success: true });
   });
 
-  app.post("/api/notifications/read-all/", authenticateJwt, (req: Request, res: Response) => {
+  app.post(["/api/notifications/read-all", "/api/notifications/read-all/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
     for (const notif of notifications.values()) {
       if (notif.recipient_id === currentUser.id) {
@@ -938,7 +939,7 @@ async function startServer() {
   // GAMES & MULTIPLAYER API
   // ==========================================
 
-  app.get("/api/games/", (req: Request, res: Response) => {
+  app.get(["/api/games", "/api/games/"], (req: Request, res: Response) => {
     const list = Array.from(games.values()).map((g) => ({
       id: g.id,
       unique_game_code: g.unique_game_code,
@@ -956,7 +957,7 @@ async function startServer() {
     res.json(list);
   });
 
-  app.post("/api/games/", optionalJwt, (req: Request, res: Response) => {
+  app.post(["/api/games", "/api/games/"], optionalJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord | undefined;
     const {
       game_type = "ranked",
@@ -1006,7 +1007,7 @@ async function startServer() {
     });
   });
 
-  app.get("/api/games/:id/", (req: Request, res: Response) => {
+  app.get(["/api/games/:id", "/api/games/:id/"], (req: Request, res: Response) => {
     const { id } = req.params;
     const game = games.get(id) || gamesByCode.get(id.toUpperCase());
     if (!game) {
@@ -1015,7 +1016,7 @@ async function startServer() {
     res.json(game);
   });
 
-  app.get("/api/games/:id/moves/", (req: Request, res: Response) => {
+  app.get(["/api/games/:id/moves", "/api/games/:id/moves/"], (req: Request, res: Response) => {
     const { id } = req.params;
     const game = games.get(id) || gamesByCode.get(id.toUpperCase());
     if (!game) {
@@ -1024,7 +1025,7 @@ async function startServer() {
     res.json(game.moves);
   });
 
-  app.post("/api/games/:id/join/", optionalJwt, (req: Request, res: Response) => {
+  app.post(["/api/games/:id/join", "/api/games/:id/join/"], optionalJwt, (req: Request, res: Response) => {
     const { id } = req.params;
     const currentUser = (req as any).user as UserDbRecord | undefined;
     const { player_name } = req.body;
@@ -1054,7 +1055,7 @@ async function startServer() {
   });
 
   // Health check
-  app.get("/api/health", (req: Request, res: Response) => {
+  app.get(["/api/health", "/api/health/"], (req: Request, res: Response) => {
     res.json({
       status: "ok",
       platform: "Fanorona Professional Web Edition",
@@ -1062,6 +1063,11 @@ async function startServer() {
       active_games: games.size,
       timestamp: new Date().toISOString(),
     });
+  });
+
+  // Catch-all fallback for any unknown API route: ALWAYS return JSON, never HTML
+  app.all("/api/*", (req: Request, res: Response) => {
+    res.status(404).json({ error: `Route API introuvable : ${req.method} ${req.path}` });
   });
 
   // Vite middleware in dev or static files in production

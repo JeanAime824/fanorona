@@ -6,8 +6,15 @@
 import { io, Socket } from "socket.io-client";
 import { Move, Player } from "../game/types/gameTypes";
 
-const SOCKET_SERVER_URL =
-  ((import.meta as any).env && (import.meta as any).env.VITE_BACKEND_URL) || "";
+const rawSocketUrl =
+  ((import.meta as any).env?.VITE_BACKEND_URL as string) ||
+  ((import.meta as any).env?.VITE_API_URL as string) ||
+  "";
+
+const SOCKET_SERVER_URL = rawSocketUrl
+  .trim()
+  .replace(/\/+$/, "")
+  .replace(/\/api\/?$/, "");
 
 class SocketService {
   private socket: Socket | null = null;

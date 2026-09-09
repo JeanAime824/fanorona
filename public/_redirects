@@ -1,0 +1,2 @@
+# Netlify SPA redirect rule: redirects all web routes to index.html
+/*    /index.html   200
