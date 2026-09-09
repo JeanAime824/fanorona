@@ -62,6 +62,21 @@ interface FriendRequestDbRecord {
   updated_at: string;
 }
 
+interface GameInvitationDbRecord {
+  id: string;
+  sender_id: string;
+  sender_name: string;
+  receiver_id: string;
+  game_type: "casual" | "ranked";
+  status: "pending" | "accepted" | "rejected" | "expired" | "cancelled";
+  game_id?: string;
+  time_control: number;
+  created_at: string;
+  updated_at: string;
+}
+
+const gameInvitations = new Map<string, GameInvitationDbRecord>();
+
 interface FriendshipDbRecord {
   id: string;
   user1_id: string;
@@ -891,6 +906,179 @@ async function startServer() {
     }
 
     return res.status(404).json({ error: "Relation d'amitié introuvable." });
+  });
+
+  // ==========================================
+  // CHALLENGES & GAME INVITATIONS SYSTEM
+  // ==========================================
+
+  app.get(["/api/challenges/received", "/api/challenges/received/"], authenticateJwt, (req: Request, res: Response) => {
+    const currentUser = (req as any).user as UserDbRecord;
+    const list = Array.from(gameInvitations.values()).filter(
+      (inv) => inv.receiver_id === currentUser.id && inv.status === "pending"
+    );
+    res.json(list);
+  });
+
+  app.post(["/api/challenges/send", "/api/challenges/send/"], authenticateJwt, (req: Request, res: Response) => {
+    const currentUser = (req as any).user as UserDbRecord;
+    const { target_user_id, player_id, game_type = "ranked", time_control = 300 } = req.body;
+
+    let targetUser: UserDbRecord | undefined;
+    if (target_user_id) {
+      targetUser = users.get(target_user_id);
+    } else if (player_id) {
+      targetUser = usersByPlayerId.get(player_id.toUpperCase());
+    }
+
+    if (!targetUser) {
+      return res.status(404).json({ error: "Joueur destinataire introuvable." });
+    }
+
+    // Check existing active pending invitation
+    for (const inv of gameInvitations.values()) {
+      if (
+        inv.status === "pending" &&
+        inv.sender_id === currentUser.id &&
+        inv.receiver_id === targetUser.id
+      ) {
+        return res.json({ success: true, message: "Une invitation est déjà en attente.", invite: inv });
+      }
+    }
+
+    const inviteId = `ginv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const newInvite: GameInvitationDbRecord = {
+      id: inviteId,
+      sender_id: currentUser.id,
+      sender_name: currentUser.username,
+      receiver_id: targetUser.id,
+      game_type: game_type === "casual" ? "casual" : "ranked",
+      status: "pending",
+      time_control: Number(time_control) || 300,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+    };
+
+    gameInvitations.set(inviteId, newInvite);
+
+    // Create Notification for recipient
+    const notifId = `notif_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const notif: NotificationDbRecord = {
+      id: notifId,
+      recipient_id: targetUser.id,
+      type: "GAME_INVITATION",
+      title: "Invitation à jouer",
+      message: `${currentUser.username} (${currentUser.player_id}) vous a défié pour une partie de Fanorona !`,
+      data: {
+        invite_id: inviteId,
+        sender_id: currentUser.id,
+        sender_name: currentUser.username,
+        player_id: currentUser.player_id,
+        game_type,
+        time_control,
+      },
+      is_read: false,
+      created_at: new Date().toISOString(),
+    };
+    notifications.set(notifId, notif);
+
+    // Push socket event
+    const targetSocketId = userSockets.get(targetUser.id);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("notification_received", notif);
+      io.to(targetSocketId).emit("game_invitation_received", {
+        invite_id: inviteId,
+        sender: toPublicProfile(currentUser),
+        game_type,
+        time_control,
+      });
+    }
+
+    res.status(201).json({ success: true, message: "Invitation de défi envoyée !", invite: newInvite });
+  });
+
+  app.post(["/api/challenges/:id/accept", "/api/challenges/:id/accept/"], authenticateJwt, (req: Request, res: Response) => {
+    const currentUser = (req as any).user as UserDbRecord;
+    const { id } = req.params;
+    const invite = gameInvitations.get(id);
+
+    if (!invite || invite.receiver_id !== currentUser.id) {
+      return res.status(404).json({ error: "Invitation introuvable ou invalide." });
+    }
+
+    if (invite.status !== "pending") {
+      return res.status(400).json({ error: `L'invitation a déjà été ${invite.status}.` });
+    }
+
+    // Create active game room session
+    const gameId = `game_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const randomCodeSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const gameCode = `GAME-${randomCodeSuffix}`;
+    const initialGameState = createInitialGame("multiplayer", "medium", "black", gameId);
+
+    const senderUser = users.get(invite.sender_id);
+    const newGame: GameDbRecord = {
+      id: gameId,
+      unique_game_code: gameCode,
+      game_type: invite.game_type,
+      status: "active",
+      player_white_id: invite.sender_id,
+      player_black_id: currentUser.id,
+      player_white_name: senderUser?.username || invite.sender_name,
+      player_black_name: currentUser.username,
+      player_white_isa: senderUser?.isa || 1200,
+      player_black_isa: currentUser.isa,
+      winner: null,
+      time_control: invite.time_control,
+      current_turn: "white",
+      turn_number: 1,
+      started_at: new Date().toISOString(),
+      finished_at: null,
+      game_state: initialGameState,
+      moves: [],
+    };
+
+    games.set(gameId, newGame);
+    gamesByCode.set(gameCode, newGame);
+
+    invite.status = "accepted";
+    invite.game_id = gameId;
+    invite.updated_at = new Date().toISOString();
+
+    // Notify sender via Socket.io to launch match room automatically
+    const senderSocketId = userSockets.get(invite.sender_id);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("challenge_accepted", {
+        invite_id: invite.id,
+        game_id: gameId,
+        opponent: toPublicProfile(currentUser),
+      });
+    }
+
+    res.json({ success: true, message: "Défi accepté ! Lancement de la partie...", game_id: gameId, game: newGame });
+  });
+
+  app.post(["/api/challenges/:id/reject", "/api/challenges/:id/reject/"], authenticateJwt, (req: Request, res: Response) => {
+    const currentUser = (req as any).user as UserDbRecord;
+    const { id } = req.params;
+    const invite = gameInvitations.get(id);
+
+    if (!invite || invite.receiver_id !== currentUser.id) {
+      return res.status(404).json({ error: "Invitation introuvable." });
+    }
+
+    invite.status = "rejected";
+    invite.updated_at = new Date().toISOString();
+
+    const senderSocketId = userSockets.get(invite.sender_id);
+    if (senderSocketId) {
+      io.to(senderSocketId).emit("challenge_rejected", {
+        invite_id: invite.id,
+        opponent_name: currentUser.username,
+      });
+    }
+
+    res.json({ success: true, message: "Invitation refusée." });
   });
 
   // ==========================================

@@ -362,6 +362,32 @@ export const api = {
     return safeFetchJson(res, "Impossible de supprimer cet ami");
   },
 
+  // Challenges
+  async sendChallenge(params: { target_user_id?: string; player_id?: string; game_type?: string; time_control?: number }) {
+    const res = await resilientFetch(`${API_BASE_URL}/api/challenges/send`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+      body: JSON.stringify(params),
+    });
+    return safeFetchJson(res, "Impossible d'envoyer l'invitation");
+  },
+
+  async acceptChallenge(inviteId: string) {
+    const res = await resilientFetch(`${API_BASE_URL}/api/challenges/${inviteId}/accept`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    return safeFetchJson(res, "Impossible d'accepter le défi");
+  },
+
+  async rejectChallenge(inviteId: string) {
+    const res = await resilientFetch(`${API_BASE_URL}/api/challenges/${inviteId}/reject`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    return safeFetchJson(res, "Impossible de refuser le défi");
+  },
+
   // Notifications
   async getNotifications(): Promise<NotificationItem[]> {
     try {

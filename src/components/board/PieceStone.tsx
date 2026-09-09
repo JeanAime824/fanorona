@@ -51,13 +51,13 @@ export const PieceStone: React.FC<PieceStoneProps> = ({
         }`}
       />
 
-      {/* Selected Piece Ring - Subtle and Precise */}
+      {/* Selected Piece Ring - Terracotta Clay #C45A3C Accent */}
       {isSelected && (
         <motion.div
           initial={{ scale: 0.95, opacity: 0 }}
           animate={{ scale: 1.16, opacity: 1 }}
           transition={{ type: "spring", stiffness: 450, damping: 25 }}
-          className="absolute -inset-1 rounded-full border-[1.5px] border-[#C8A452] pointer-events-none"
+          className="absolute -inset-1 rounded-full border-2 border-[#C45A3C] pointer-events-none"
         />
       )}
 
@@ -71,12 +71,12 @@ export const PieceStone: React.FC<PieceStoneProps> = ({
         <div className="absolute -inset-1 rounded-full border border-amber-400/80 pointer-events-none" />
       )}
 
-      {/* Tactile Stone Body */}
+      {/* Tactile Stone Body - Natural Matte Finish */}
       <div
         className={`relative w-[86%] h-[86%] rounded-full transition-colors ${
           isWhite
-            ? "bg-gradient-to-br from-[#FAF9F5] via-[#EDE8DE] to-[#DAD3C5] border border-[#CCC4B4] shadow-[inset_0_1px_2px_rgba(255,255,255,0.95),inset_0_-1px_2px_rgba(0,0,0,0.15)]"
-            : "bg-gradient-to-br from-[#2B2926] via-[#1A1817] to-[#100F0E] border border-[#3A3734] shadow-[inset_0_1px_1.5px_rgba(255,255,255,0.18),inset_0_-2px_3px_rgba(0,0,0,0.85)]"
+            ? "bg-[#E8DCC3] border border-[#D5C6A7] shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),inset_0_-1px_2px_rgba(0,0,0,0.12)]"
+            : "bg-[#29231F] border border-[#3A322C] shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),inset_0_-1px_2px_rgba(0,0,0,0.6)]"
         } flex items-center justify-center`}
       >
         {/* Subtle, soft natural luster at the upper crest */}

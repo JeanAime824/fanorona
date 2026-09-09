@@ -48,6 +48,35 @@ class SocketService {
     return this.socket;
   }
 
+  public authenticate(token?: string | null, userId?: string) {
+    const socket = this.connect();
+    socket.emit("authenticate", { token, userId });
+  }
+
+  public onChallengeAccepted(callback: (data: { invite_id: string; game_id: string; opponent: any }) => void) {
+    const socket = this.connect();
+    socket.off("challenge_accepted");
+    socket.on("challenge_accepted", callback);
+  }
+
+  public onChallengeRejected(callback: (data: { invite_id: string; opponent_name: string }) => void) {
+    const socket = this.connect();
+    socket.off("challenge_rejected");
+    socket.on("challenge_rejected", callback);
+  }
+
+  public onGameInvitationReceived(callback: (data: any) => void) {
+    const socket = this.connect();
+    socket.off("game_invitation_received");
+    socket.on("game_invitation_received", callback);
+  }
+
+  public onNotificationReceived(callback: (notif: any) => void) {
+    const socket = this.connect();
+    socket.off("notification_received");
+    socket.on("notification_received", callback);
+  }
+
   public createGame(playerId: string, playerName: string, playerColor: Player = "white", timeControl: number = 30) {
     const socket = this.connect();
     socket.emit("create_game", { playerId, playerName, playerColor, timeControl });

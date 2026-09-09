@@ -208,6 +208,48 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
                       {n.message}
                     </p>
 
+                    {n.type === "GAME_INVITATION" && n.data?.invite_id && !n.is_read && (
+                      <div className="flex items-center gap-2 pt-1.5" onClick={(e) => e.stopPropagation()}>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              const res = await api.acceptChallenge(n.data.invite_id);
+                              handleMarkAsRead(n.id);
+                              setIsOpen(false);
+                              if (res.game_id) {
+                                onNavigate("game");
+                                setTimeout(() => {
+                                  window.dispatchEvent(
+                                    new CustomEvent("start-online-game", { detail: { gameId: res.game_id } })
+                                  );
+                                }, 50);
+                              }
+                            } catch (err: any) {
+                              alert(err?.message || "Erreur acceptation du défi");
+                            }
+                          }}
+                          className="px-2.5 py-1 rounded-lg bg-[#A8432E] hover:bg-[#C45A3C] text-white text-[11px] font-bold transition-all cursor-pointer shadow-sm"
+                        >
+                          Accepter le défi
+                        </button>
+                        <button
+                          type="button"
+                          onClick={async () => {
+                            try {
+                              await api.rejectChallenge(n.data.invite_id);
+                              handleMarkAsRead(n.id);
+                            } catch (err) {
+                              console.warn(err);
+                            }
+                          }}
+                          className="px-2 py-1 rounded-lg bg-white/5 hover:bg-white/10 text-[#9E9890] text-[11px] transition-colors cursor-pointer"
+                        >
+                          Refuser
+                        </button>
+                      </div>
+                    )}
+
                     <div className="flex items-center justify-between pt-1">
                       <span className="text-[10px] font-mono text-[#C8A452]">
                         {n.data?.player_id ? `ID: ${n.data.player_id}` : ""}

@@ -51,9 +51,18 @@ export const GamePage: React.FC = () => {
 
   useEffect(() => {
     const handleOpen = () => setIsNewGameOpen(true);
+    const handleStartOnline = (e: any) => {
+      if (e.detail?.gameId) {
+        startNewGame("multiplayer", "medium", "white", false, 300, e.detail.gameId);
+      }
+    };
     window.addEventListener("open-new-game-modal", handleOpen);
-    return () => window.removeEventListener("open-new-game-modal", handleOpen);
-  }, []);
+    window.addEventListener("start-online-game", handleStartOnline);
+    return () => {
+      window.removeEventListener("open-new-game-modal", handleOpen);
+      window.removeEventListener("start-online-game", handleStartOnline);
+    };
+  }, [startNewGame]);
   const [isGameOverModalOpen, setIsGameOverModalOpen] = useState(false);
   const [isVictoryOverlayOpen, setIsVictoryOverlayOpen] = useState(false);
   const [isResignConfirmOpen, setIsResignConfirmOpen] = useState(false);
