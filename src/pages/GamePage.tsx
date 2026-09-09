@@ -48,6 +48,12 @@ export const GamePage: React.FC = () => {
   const [multiState, multiActions] = useMultiplayer(user?.uid);
 
   const [isNewGameOpen, setIsNewGameOpen] = useState(false);
+
+  useEffect(() => {
+    const handleOpen = () => setIsNewGameOpen(true);
+    window.addEventListener("open-new-game-modal", handleOpen);
+    return () => window.removeEventListener("open-new-game-modal", handleOpen);
+  }, []);
   const [isGameOverModalOpen, setIsGameOverModalOpen] = useState(false);
   const [isVictoryOverlayOpen, setIsVictoryOverlayOpen] = useState(false);
   const [isResignConfirmOpen, setIsResignConfirmOpen] = useState(false);

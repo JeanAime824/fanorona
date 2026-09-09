@@ -46,7 +46,27 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   const [speedMode, setSpeedMode] = useState<boolean>(initialSpeedMode);
   const [timeLimit, setTimeLimit] = useState<number>(initialTimeLimit);
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
+  const [friendsList, setFriendsList] = useState<{ id: string; friend: any }[]>([]);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
+
+  useEffect(() => {
+    if (isOpen) {
+      api.getFriends().then((res) => {
+        if (Array.isArray(res)) setFriendsList(res);
+      }).catch(() => {});
+    }
+  }, [isOpen]);
+
+  useEffect(() => {
+    const handleCustomOpen = (e: any) => {
+      if (e.detail?.friendId) {
+        setSelectedMode("multiplayer");
+        setSelectedFriendId(e.detail.friendId);
+      }
+    };
+    window.addEventListener("open-new-game-modal", handleCustomOpen);
+    return () => window.removeEventListener("open-new-game-modal", handleCustomOpen);
+  }, []);
 
   if (!isOpen) return null;
 
@@ -201,26 +221,51 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
         )}
 
         {/* Friend Selection (if Multiplayer mode) */}
-        {selectedMode === "multiplayer" && multiState.friends.length > 0 && (
+        {selectedMode === "multiplayer" && (
           <div>
             <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/40 mb-2">
-              Sélectionner un ami
+              Sélectionner un ami pour le duel
             </label>
-            <div className="max-h-32 overflow-y-auto space-y-1 p-2 bg-white/[0.03] rounded-lg border border-white/[0.08]">
-              {multiState.friends.map((friend) => (
-                <button
-                  key={friend.id}
-                  onClick={() => setSelectedFriendId(friend.friendId)}
-                  className={`w-full p-2 rounded text-left text-xs transition-colors ${
-                    selectedFriendId === friend.friendId
-                      ? "bg-[#C8A452]/20 text-[#C8A452] border border-[#C8A452]"
-                      : "bg-white/[0.02] text-[#9E9890] hover:bg-white/[0.08]"
-                  }`}
-                >
-                  {friend.friendId}
-                </button>
-              ))}
-            </div>
+            {friendsList.length === 0 && multiState.friends.length === 0 ? (
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 text-center text-xs text-[#9E9890]">
+                Aucun ami dans votre liste pour le moment. Ajoutez des amis depuis l'onglet <strong className="text-[#F5F3EE]">Amis</strong>.
+              </div>
+            ) : (
+              <div className="max-h-40 overflow-y-auto space-y-1.5 p-2 bg-white/[0.03] rounded-xl border border-white/[0.08]">
+                {friendsList.map(({ id: friendshipId, friend }) => {
+                  const isSelected = selectedFriendId === friend.id || selectedFriendId === friend.player_id;
+                  return (
+                    <button
+                      key={friendshipId}
+                      type="button"
+                      onClick={() => setSelectedFriendId(friend.id)}
+                      className={`w-full p-2.5 rounded-xl border flex items-center justify-between text-left transition-all cursor-pointer ${
+                        isSelected
+                          ? "bg-[#C8A452]/20 border-[#C8A452] text-[#F5F3EE]"
+                          : "bg-white/[0.02] border-white/5 text-[#9E9890] hover:bg-white/[0.06]"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2.5">
+                        <img
+                          src={friend.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${friend.username}`}
+                          alt={friend.username}
+                          className="w-7 h-7 rounded-lg object-cover border border-white/10"
+                        />
+                        <div>
+                          <div className="text-xs font-bold text-[#F5F3EE]">{friend.username}</div>
+                          <div className="text-[10px] font-mono text-[#C8A452]">ID: {friend.player_id}</div>
+                        </div>
+                      </div>
+                      <div className={`text-[10px] font-semibold px-2 py-0.5 rounded-full ${
+                        isSelected ? "bg-[#C8A452] text-black" : "bg-white/10 text-[#9E9890]"
+                      }`}>
+                        {isSelected ? "Sélectionné" : "Défier"}
+                      </div>
+                    </button>
+                  );
+                })}
+              </div>
+            )}
           </div>
         )}
 

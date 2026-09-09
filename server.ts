@@ -161,58 +161,9 @@ function calculateIsaChange(playerIsa: number, opponentIsa: number, result: 1 | 
   return change;
 }
 
-// Seed initial prominent community players from Madagascar Fanorona community
+// No dummy/virtual users - leaderboard only uses real registered players
 function seedDefaultData() {
-  const existingPlayerIds = new Set<string>();
-  const seedUsersData = [
-    { username: "aimej519", email: "aimej519@gmail.com", isa: 1650, pid: "519204" },
-    { username: "FanoronaPro", email: "pro@fanorona.mg", isa: 1824, pid: "982401" },
-    { username: "Malagasy", email: "malagasy@fanorona.mg", isa: 1762, pid: "762015" },
-    { username: "JeanAime", email: "jeanaime@fanorona.mg", isa: 1640, pid: "640822" },
-    { username: "Tiana", email: "tiana@fanorona.mg", isa: 1588, pid: "588319" },
-    { username: "AndryGasy", email: "andry@fanorona.mg", isa: 1450, pid: "450912" },
-    { username: "SoaLaza", email: "soa@fanorona.mg", isa: 1320, pid: "320147" },
-  ];
-
-  const defaultHash = bcrypt.hashSync("Fanorona2026!", 8);
-
-  for (const item of seedUsersData) {
-    const id = `usr_${item.username.toLowerCase()}`;
-    const user: UserDbRecord = {
-      id,
-      username: item.username,
-      email: item.email,
-      password_hash: defaultHash,
-      player_id: item.pid,
-      isa: item.isa,
-      games_played: 45,
-      wins: Math.round(45 * (item.isa / 2400)),
-      losses: 45 - Math.round(45 * (item.isa / 2400)) - 3,
-      draws: 3,
-      avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${item.username}`,
-      created_at: new Date(Date.now() - 30 * 24 * 3600 * 1000).toISOString(),
-      updated_at: new Date().toISOString(),
-      last_activity: new Date().toISOString(),
-      status: "ONLINE",
-    };
-    users.set(id, user);
-    usersByPlayerId.set(item.pid, user);
-    usersByUsername.set(item.username.toLowerCase(), user);
-    existingPlayerIds.add(item.pid);
-
-    // Initial rating history
-    ratingHistories.set(id, [
-      {
-        id: `rh_${id}_init`,
-        user_id: id,
-        old_rating: 1200,
-        new_rating: item.isa,
-        rating_change: item.isa - 1200,
-        reason: "Qualification initiale",
-        created_at: user.created_at,
-      },
-    ]);
-  }
+  // Empty seed to ensure 100% real user data
 }
 
 seedDefaultData();

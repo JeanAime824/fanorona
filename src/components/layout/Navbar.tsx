@@ -37,6 +37,7 @@ export interface NavbarProps {
   soundEnabled: boolean;
   onToggleSound: () => void;
   notificationCount?: number;
+  onOpenNewGame?: () => void;
 }
 
 export const Navbar: React.FC<NavbarProps> = ({
@@ -44,6 +45,7 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectTab,
   soundEnabled,
   onToggleSound,
+  onOpenNewGame,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-[#121110]/95 backdrop-blur-md border-b border-white/[0.06]">
@@ -86,6 +88,20 @@ export const Navbar: React.FC<NavbarProps> = ({
 
         {/* Navigation Tabs */}
         <nav className="flex items-center gap-1 sm:gap-1.5">
+          {onOpenNewGame && (
+            <button
+              type="button"
+              onClick={() => {
+                onSelectTab("game");
+                onOpenNewGame();
+              }}
+              className="px-3 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 bg-[#C8A452] hover:bg-[#D4AF37] text-black shadow-md shadow-[#C8A452]/20 active:scale-95"
+            >
+              <Gamepad2 className="w-3.5 h-3.5 fill-current" />
+              <span>Nouvelle Partie</span>
+            </button>
+          )}
+
           <button
             type="button"
             onClick={() => onSelectTab("game")}
@@ -96,7 +112,7 @@ export const Navbar: React.FC<NavbarProps> = ({
             }`}
           >
             <Gamepad2 className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Jouer</span>
+            <span className="hidden sm:inline">Plateau</span>
           </button>
 
           <button

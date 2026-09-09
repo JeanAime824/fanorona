@@ -98,6 +98,12 @@ function AppContent() {
         onSelectTab={handleNavigate}
         soundEnabled={settings.soundEnabled}
         onToggleSound={handleToggleSound}
+        onOpenNewGame={() => {
+          handleNavigate("game");
+          setTimeout(() => {
+            window.dispatchEvent(new Event("open-new-game-modal"));
+          }, 50);
+        }}
       />
 
       {/* Main Tab Content */}
@@ -108,7 +114,14 @@ function AppContent() {
             onNavigate={handleNavigate}
             onSelectPlayer={handleSelectPlayer}
             onInviteToGame={(friend) => {
-              setCurrentTab("game");
+              handleNavigate("game");
+              setTimeout(() => {
+                window.dispatchEvent(
+                  new CustomEvent("open-new-game-modal", {
+                    detail: { friendId: friend.id, friendName: friend.username },
+                  })
+                );
+              }, 50);
             }}
           />
         )}
