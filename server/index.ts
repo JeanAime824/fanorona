@@ -216,7 +216,7 @@ app.get("/api/health", (req, res) => {
 });
 
 // List Public Active Games
-app.get("/api/games", (req, res) => {
+app.get(["/api/games", "/api/games/"], (req, res) => {
   const gamesList = Array.from(activeGames.values()).map((g) => ({
     id: g.id,
     whitePlayerName: g.whitePlayerName,
@@ -228,6 +228,55 @@ app.get("/api/games", (req, res) => {
     createdAt: g.createdAt,
   }));
   res.json(gamesList);
+});
+
+// Online Open Challenges Lobby
+app.get(["/api/games/lobby", "/api/games/lobby/"], (req, res) => {
+  const waitingList = Array.from(activeGames.values())
+    .filter((g) => g.gameState.status === "playing" && (!g.whitePlayerId || !g.blackPlayerId))
+    .map((g) => ({
+      id: g.id,
+      unique_game_code: g.id,
+      host_name: g.whitePlayerName || g.blackPlayerName || "Joueur",
+      host_isa: 1200,
+      host_id: g.whitePlayerId || g.blackPlayerId || "",
+      time_control: g.timeControl,
+      created_at: g.createdAt,
+    }));
+  res.json(waitingList);
+});
+
+// Quick Matchmaking
+app.post(["/api/games/quick-match", "/api/games/quick-match/"], (req, res) => {
+  const { playerId = `guest_${Date.now()}`, playerName = "Joueur", timeControl = 300 } = req.body;
+
+  // Search for existing waiting game
+  for (const g of activeGames.values()) {
+    if (!g.blackPlayerId && g.whitePlayerId !== playerId) {
+      g.blackPlayerId = playerId;
+      g.blackPlayerName = playerName;
+      return res.json({ matched: true, game: g });
+    }
+  }
+
+  // Create new game session
+  const gameId = `game_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const initialGameState = createInitialGame("multiplayer", "medium", "black", gameId);
+
+  const newSession: ServerGameSession = {
+    id: gameId,
+    whitePlayerId: playerId,
+    blackPlayerId: null,
+    whitePlayerName: playerName,
+    blackPlayerName: null,
+    timeControl,
+    gameState: initialGameState,
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+  };
+
+  activeGames.set(gameId, newSession);
+  res.status(201).json({ matched: false, game: newSession });
 });
 
 // Create Game via REST
