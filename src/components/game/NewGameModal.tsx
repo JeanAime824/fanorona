@@ -4,11 +4,12 @@
  * Now includes multiplayer friend challenges!
  */
 
-import { Bot, Clock, Play, Sparkles, User, Users, Zap } from "lucide-react";
+import { Bot, Clock, Globe, Play, Sparkles, User, Users, Zap } from "lucide-react";
 import React, { useEffect, useState } from "react";
 import { AiDifficulty, GameMode, Player } from "../../game/types/gameTypes";
 import { useAuth } from "../../context/AuthContext";
 import { useMultiplayer } from "../../hooks/useMultiplayer";
+import { api } from "../../services/api";
 import { Button } from "../ui/Button";
 import { Modal } from "../ui/Modal";
 
@@ -53,10 +54,6 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
     if (selectedMode === "multiplayer" && selectedFriendId) {
       setIsCreatingGame(true);
       try {
-        const friend = multiState.friends.find((f) => f.friendId === selectedFriendId);
-        if (!friend) throw new Error("Ami non trouvé");
-
-        // Créer la session de jeu multiplayer
         const gameId = await multiActions.createLiveGame(
           selectedFriendId,
           selectedFriendId,
@@ -71,8 +68,20 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       } finally {
         setIsCreatingGame(false);
       }
+    } else if ((selectedMode as string) === "online_match") {
+      setIsCreatingGame(true);
+      try {
+        const matchRes = await api.quickMatch(timeLimit);
+        const gameId = matchRes.game?.id || matchRes.game_id;
+        onStartGame("multiplayer", "medium", selectedColor, false, timeLimit, gameId);
+        onClose();
+      } catch (error) {
+        console.error("Erreur matchmaking:", error);
+      } finally {
+        setIsCreatingGame(false);
+      }
     } else {
-      // Mode AI ou PvP
+      // Mode AI ou Local PvP
       const aiColor: Player = selectedColor === "white" ? "black" : "white";
       onStartGame(selectedMode, selectedDifficulty, aiColor, speedMode, timeLimit);
       onClose();
@@ -92,7 +101,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
           <label className="block text-[11px] font-semibold uppercase tracking-widest text-white/40 mb-2">
             Mode de jeu
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               type="button"
               onClick={() => setSelectedMode("ai")}
@@ -103,10 +112,42 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               }`}
             >
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#E6E6E6]">
-                <Bot className="w-3 h-3 text-[#D4AF37]" />
-                <span>IA</span>
+                <Bot className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>Contre IA</span>
               </div>
-              <p className="text-[9px] text-white/50">Minimax</p>
+              <p className="text-[9px] text-white/50">Minimax Solo</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMode("multiplayer")}
+              className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] ${
+                selectedMode === "multiplayer"
+                  ? "bg-[#161616] border-[#D4AF37] shadow-md shadow-[#D4AF37]/10"
+                  : "bg-[#111111] border-white/10 opacity-70 hover:opacity-100"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#E6E6E6]">
+                <Users className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>Contre Ami</span>
+              </div>
+              <p className="text-[9px] text-white/50">Défier un ami</p>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => setSelectedMode("online_match" as GameMode)}
+              className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] ${
+                (selectedMode as string) === "online_match"
+                  ? "bg-[#161616] border-[#D4AF37] shadow-md shadow-[#D4AF37]/10"
+                  : "bg-[#111111] border-white/10 opacity-70 hover:opacity-100"
+              }`}
+            >
+              <div className="flex items-center gap-1.5 text-xs font-bold text-[#E6E6E6]">
+                <Globe className="w-3.5 h-3.5 text-[#D4AF37]" />
+                <span>En Ligne</span>
+              </div>
+              <p className="text-[9px] text-white/50">Choix au hasard</p>
             </button>
 
             <button
@@ -119,29 +160,11 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
               }`}
             >
               <div className="flex items-center gap-1.5 text-xs font-bold text-[#E6E6E6]">
-                <Users className="w-3 h-3 text-[#D4AF37]" />
+                <Zap className="w-3.5 h-3.5 text-[#D4AF37]" />
                 <span>Local</span>
               </div>
               <p className="text-[9px] text-white/50">Pass & Play</p>
             </button>
-
-            {user && multiState.friends.length > 0 && (
-              <button
-                type="button"
-                onClick={() => setSelectedMode("multiplayer")}
-                className={`p-3 rounded-xl border text-left transition-all cursor-pointer flex flex-col gap-1 focus:outline-none focus:ring-2 focus:ring-[#D4AF37] ${
-                  selectedMode === "multiplayer"
-                    ? "bg-[#161616] border-[#D4AF37] shadow-md shadow-[#D4AF37]/10"
-                    : "bg-[#111111] border-white/10 opacity-70 hover:opacity-100"
-                }`}
-              >
-                <div className="flex items-center gap-1.5 text-xs font-bold text-[#E6E6E6]">
-                  <Zap className="w-3 h-3 text-[#D4AF37]" />
-                  <span>Ami</span>
-                </div>
-                <p className="text-[9px] text-white/50">Multiplayer</p>
-              </button>
-            )}
           </div>
         </div>
 

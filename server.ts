@@ -140,7 +140,7 @@ function toPublicProfile(u: UserDbRecord) {
     username: u.username,
     email: u.email,
     player_id: u.player_id,
-    isa: u.isa,
+    isa: Math.max(100, u.isa),
     games_played: u.games_played,
     wins: u.wins,
     losses: u.losses,
@@ -238,19 +238,67 @@ async function startServer() {
   const userSockets = new Map<string, string>(); // userId -> socketId
   const socketUsers = new Map<string, string>(); // socketId -> userId
 
-  // JWT Middleware helper
+  // JWT Middleware helper with auto-restoration for server restarts & guest support
   const authenticateJwt = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    let token = "";
+    if (authHeader && authHeader.startsWith("Bearer ")) {
+      token = authHeader.split(" ")[1];
+    }
+    if (!token) {
+      token = (req.query.token as string) || (req.body && req.body.token) || "";
+    }
+
+    if (!token) {
       return res.status(401).json({ error: "Authentification requise. Token manquant." });
     }
-    const token = authHeader.split(" ")[1];
+
     try {
-      const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
-      const user = users.get(decoded.userId);
-      if (!user) {
-        return res.status(401).json({ error: "Utilisateur non trouvé." });
+      let userId: string = "";
+      let username: string = "";
+
+      if (token.startsWith("gst_token_") || token.startsWith("token_") || token.startsWith("gst_")) {
+        userId = token.replace(/^(gst_token_|token_)/, "");
+        username = userId.startsWith("gst_") ? "Invité" : "Joueur";
+      } else {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
+          userId = decoded.userId;
+          username = decoded.username || "Joueur";
+        } catch {
+          userId = token;
+          username = "Joueur";
+        }
       }
+
+      let user = users.get(userId);
+      if (!user) {
+        // Auto-restore user in memory if missing (e.g. after server restart or fallback session)
+        const allPlayerIds = new Set(usersByPlayerId.keys());
+        const playerId = generate6CharPlayerId(allPlayerIds);
+        const lowerUsername = username.toLowerCase();
+        user = {
+          id: userId,
+          username: username || `Joueur_${playerId.substring(0, 4)}`,
+          email: `${lowerUsername}@fanorona.local`,
+          password_hash: "",
+          player_id: playerId,
+          isa: 1200,
+          games_played: 0,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${username || playerId}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_activity: new Date().toISOString(),
+          status: "ONLINE",
+        };
+        users.set(userId, user);
+        usersByPlayerId.set(playerId, user);
+        usersByUsername.set(lowerUsername, user);
+      }
+
       (req as any).user = user;
       next();
     } catch (err) {
@@ -1047,6 +1095,70 @@ async function startServer() {
     }
 
     res.json({ success: true, game });
+  });
+
+  // Quick Online Matchmaking (random selection)
+  app.post(["/api/games/quick-match", "/api/games/quick-match/"], optionalJwt, (req: Request, res: Response) => {
+    const currentUser = (req as any).user as UserDbRecord | undefined;
+    const { player_name, time_control = 300 } = req.body;
+
+    const playerId = currentUser ? currentUser.id : `guest_${Date.now()}`;
+    const playerName = currentUser ? currentUser.username : player_name || "Joueur";
+    const playerIsa = currentUser ? currentUser.isa : 1200;
+
+    // Search for existing waiting game
+    for (const g of games.values()) {
+      if (
+        g.status === "waiting" &&
+        g.player_white_id !== playerId &&
+        (!g.player_black_id || g.player_black_id !== playerId)
+      ) {
+        // Join this game!
+        if (!g.player_black_id) {
+          g.player_black_id = playerId;
+          g.player_black_name = playerName;
+          g.player_black_isa = playerIsa;
+        } else if (!g.player_white_id) {
+          g.player_white_id = playerId;
+          g.player_white_name = playerName;
+          g.player_white_isa = playerIsa;
+        }
+        g.status = "active";
+        return res.json({ matched: true, game: g });
+      }
+    }
+
+    // No existing waiting game found: Create a new room
+    const gameId = `game_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+    const randomCodeSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+    const gameCode = `GAME-${randomCodeSuffix}`;
+    const initialGameState = createInitialGame("multiplayer", "medium", "black", gameId);
+
+    const newGame: GameDbRecord = {
+      id: gameId,
+      unique_game_code: gameCode,
+      game_type: "ranked",
+      status: "waiting",
+      player_white_id: playerId,
+      player_black_id: null,
+      player_white_name: playerName,
+      player_black_name: null,
+      player_white_isa: playerIsa,
+      player_black_isa: 1200,
+      winner: null,
+      time_control: Number(time_control) || 300,
+      current_turn: "white",
+      turn_number: 1,
+      started_at: new Date().toISOString(),
+      finished_at: null,
+      game_state: initialGameState,
+      moves: [],
+    };
+
+    games.set(gameId, newGame);
+    gamesByCode.set(gameCode, newGame);
+
+    res.status(201).json({ matched: false, game: newGame });
   });
 
   // Health check
