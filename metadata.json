@@ -1,6 +1,8 @@
 {
   "name": "Fanorona",
   "description": "Fanorona — Le jeu traditionnel de Madagascar. Jeu de stratégie complet avec moteur indépendant, captures par approche et éloignement, IA multi-niveaux et esthétique soignée.",
-  "requestFramePermissions": [],
+  "requestFramePermissions": [
+    "microphone"
+  ],
   "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
 }

@@ -189,10 +189,24 @@ export function applyMove(state: GameState, move: Move): GameState {
   };
 
   // 6. Check victory / terminal condition
-  const statusCheck = checkGameStatus(nextState);
-  nextState.status = statusCheck.status;
-  nextState.winner = statusCheck.winner;
-  nextState.reason = statusCheck.reason;
+  if (nextCaptureSequence) {
+    const { white, black } = countPieces(board);
+    if (white === 0 || black === 0) {
+      const statusCheck = checkGameStatus(nextState);
+      nextState.status = statusCheck.status;
+      nextState.winner = statusCheck.winner;
+      nextState.reason = statusCheck.reason;
+    } else {
+      nextState.status = "playing";
+      nextState.winner = null;
+      nextState.reason = undefined;
+    }
+  } else {
+    const statusCheck = checkGameStatus(nextState);
+    nextState.status = statusCheck.status;
+    nextState.winner = statusCheck.winner;
+    nextState.reason = statusCheck.reason;
+  }
 
   // 7. Calculate new legal moves
   if (nextState.status === "game_over") {

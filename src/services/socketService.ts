@@ -7,10 +7,7 @@ import { io, Socket } from "socket.io-client";
 import { Move, Player } from "../game/types/gameTypes";
 
 const SOCKET_SERVER_URL =
-  ((import.meta as any).env && (import.meta as any).env.VITE_BACKEND_URL) ||
-  (typeof window !== "undefined" && window.location.hostname === "localhost"
-    ? "http://localhost:4000"
-    : "");
+  ((import.meta as any).env && (import.meta as any).env.VITE_BACKEND_URL) || "";
 
 class SocketService {
   private socket: Socket | null = null;

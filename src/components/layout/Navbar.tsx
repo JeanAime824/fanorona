@@ -1,18 +1,39 @@
 /**
  * @file Navbar.tsx
- * Top navigation bar with Malagasy cultural branding and tab links.
+ * Top navigation bar with Malagasy cultural branding, tab links,
+ * notification center, sound controls, and user menu.
  */
 
-import { Bell, BookOpen, Compass, Gamepad2, Settings as SettingsIcon, Users, Volume2, VolumeX } from "lucide-react";
+import {
+  BookOpen,
+  Compass,
+  Gamepad2,
+  Settings as SettingsIcon,
+  Users,
+  Trophy,
+  Volume2,
+  VolumeX,
+} from "lucide-react";
 import React from "react";
 import { UserMenu } from "../auth/UserMenu";
 import { IconButton } from "../ui/IconButton";
+import { NotificationCenter } from "../notifications/NotificationCenter";
 
-export type NavTab = "game" | "friends" | "rules" | "history" | "settings";
+export type NavTab =
+  | "game"
+  | "friends"
+  | "classement"
+  | "profil"
+  | "rules"
+  | "history"
+  | "settings"
+  | "connexion"
+  | "inscription"
+  | "public_profile";
 
 export interface NavbarProps {
-  currentTab: NavTab;
-  onSelectTab: (tab: NavTab) => void;
+  currentTab: string;
+  onSelectTab: (tab: string) => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
   notificationCount?: number;
@@ -23,7 +44,6 @@ export const Navbar: React.FC<NavbarProps> = ({
   onSelectTab,
   soundEnabled,
   onToggleSound,
-  notificationCount = 0,
 }) => {
   return (
     <header className="sticky top-0 z-40 w-full bg-[#121110]/95 backdrop-blur-md border-b border-white/[0.06]">
@@ -45,7 +65,6 @@ export const Navbar: React.FC<NavbarProps> = ({
               strokeLinecap="round"
               strokeLinejoin="round"
             >
-              {/* Fanorona authentic lattice mini-geometry */}
               <rect x="3" y="3" width="18" height="18" rx="2" strokeOpacity="0.4" />
               <line x1="3" y1="12" x2="21" y2="12" strokeOpacity="0.7" />
               <line x1="12" y1="3" x2="12" y2="21" strokeOpacity="0.7" />
@@ -84,18 +103,26 @@ export const Navbar: React.FC<NavbarProps> = ({
             type="button"
             onClick={() => onSelectTab("friends")}
             className={`relative px-3 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-colors cursor-pointer flex items-center gap-1.5 ${
-              currentTab === "friends"
+              currentTab === "friends" || currentTab === "amis"
                 ? "bg-white/[0.08] text-[#F5F3EE]"
                 : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04]"
             }`}
           >
             <Users className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Amis</span>
-            {notificationCount > 0 && (
-              <span className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 text-white text-[9px] font-bold rounded-full flex items-center justify-center">
-                {notificationCount > 9 ? "9+" : notificationCount}
-              </span>
-            )}
+          </button>
+
+          <button
+            type="button"
+            onClick={() => onSelectTab("classement")}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-colors cursor-pointer flex items-center gap-1.5 ${
+              currentTab === "classement"
+                ? "bg-white/[0.08] text-[#F5F3EE]"
+                : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04]"
+            }`}
+          >
+            <Trophy className="w-3.5 h-3.5 text-[#C8A452]" />
+            <span className="hidden md:inline">Classement</span>
           </button>
 
           <button
@@ -114,7 +141,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           <button
             type="button"
             onClick={() => onSelectTab("history")}
-            className={`px-3 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-colors cursor-pointer flex items-center gap-1.5 hidden sm:flex ${
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium tracking-wide transition-colors cursor-pointer flex items-center gap-1.5 hidden lg:flex ${
               currentTab === "history"
                 ? "bg-white/[0.08] text-[#F5F3EE]"
                 : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04]"
@@ -140,6 +167,9 @@ export const Navbar: React.FC<NavbarProps> = ({
           {/* Separation */}
           <div className="h-4 w-px bg-white/[0.08] mx-1 sm:mx-2" />
 
+          {/* Real-time Notification Center */}
+          <NotificationCenter onNavigate={onSelectTab} />
+
           {/* Audio toggle */}
           <IconButton
             size="sm"
@@ -156,7 +186,7 @@ export const Navbar: React.FC<NavbarProps> = ({
           />
 
           {/* User Sign In / Profile */}
-          <UserMenu />
+          <UserMenu onNavigate={onSelectTab} />
         </nav>
       </div>
     </header>
