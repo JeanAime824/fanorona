@@ -1048,6 +1048,22 @@ async function startServer() {
     res.json({ success: true, game });
   });
 
+  // Online Open Challenges Lobby (Chess.com style)
+  app.get(["/api/games/lobby", "/api/games/lobby/"], (req: Request, res: Response) => {
+    const waitingList = Array.from(games.values())
+      .filter((g) => g.status === "waiting")
+      .map((g) => ({
+        id: g.id,
+        unique_game_code: g.unique_game_code,
+        host_name: g.player_white_name || g.player_black_name || "Joueur",
+        host_isa: g.player_white_isa || g.player_black_isa || 1200,
+        host_id: g.player_white_id || g.player_black_id,
+        time_control: g.time_control,
+        created_at: g.started_at,
+      }));
+    res.json(waitingList);
+  });
+
   // Quick Online Matchmaking (random selection)
   app.post(["/api/games/quick-match", "/api/games/quick-match/"], optionalJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord | undefined;

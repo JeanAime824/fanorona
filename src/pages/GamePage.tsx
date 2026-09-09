@@ -173,8 +173,10 @@ export const GamePage: React.FC = () => {
         </div>
       )}
 
-      {/* WebRTC Real-Time Voice Chat Bar */}
-      <VoiceChatBar gameId={gameState.multiplayerGameId} opponentName="Adversaire" />
+      {/* WebRTC Real-Time Voice Chat Bar (Only in online multiplayer games) */}
+      {gameState.gameMode === "multiplayer" && gameState.multiplayerGameId && (
+        <VoiceChatBar gameId={gameState.multiplayerGameId} opponentName="Adversaire" />
+      )}
 
       {/* Top Matchup Header: Joueur Noir VS Joueur Blanc */}
       <div className="flex items-center justify-between px-3 py-1.5 rounded-lg bg-[#141312] border border-white/[0.04] mx-auto max-w-7xl">
