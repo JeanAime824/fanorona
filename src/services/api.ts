@@ -93,6 +93,32 @@ async function resilientFetch(url: string, options?: RequestInit): Promise<Respo
   }
 }
 
+function normalizeUserPayload(raw: any, fallbackName: string, fallbackEmail?: string): UserProfile {
+  const u = raw.user || raw;
+  const uid = u.id || u.uid || `usr_${Date.now()}`;
+  const uname = u.username || u.displayName || fallbackName;
+  const uemail = u.email || fallbackEmail || `${uname.toLowerCase().replace(/[^a-z0-9]/g, "")}@fanorona.local`;
+  const pid = u.player_id || (uid.length >= 6 ? uid.substring(uid.length - 6).toUpperCase() : "FANORO");
+  const avatar = u.avatar_url || u.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(uname)}`;
+
+  return {
+    id: uid,
+    username: uname,
+    email: uemail,
+    player_id: pid,
+    isa: typeof u.isa === "number" ? u.isa : 1200,
+    games_played: typeof u.games_played === "number" ? u.games_played : 0,
+    wins: typeof u.wins === "number" ? u.wins : 0,
+    losses: typeof u.losses === "number" ? u.losses : 0,
+    draws: typeof u.draws === "number" ? u.draws : 0,
+    win_rate: typeof u.win_rate === "number" ? u.win_rate : 0,
+    avatar_url: avatar,
+    created_at: u.created_at || u.createdAt || new Date().toISOString(),
+    last_activity: u.last_activity || new Date().toISOString(),
+    status: u.status || "ONLINE",
+  };
+}
+
 export const api = {
   // Auth
   async register(data: { username: string; email: string; password?: string; avatar_url?: string }) {
@@ -103,20 +129,37 @@ export const api = {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(data),
       });
+
+      // If remote backend returns 404 on /register (e.g. Render server running older build), fallback gracefully to /login
+      if (res.status === 404) {
+        res = await resilientFetch(`${API_BASE_URL}/api/auth/login`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            username: data.username,
+            email: data.email,
+            password: data.password,
+            photoURL: data.avatar_url,
+          }),
+        });
+      }
     } catch {
       throw new Error("Impossible de joindre le serveur. Vérifiez votre connexion internet.");
     }
 
-    const json = await safeFetchJson<{ token: string; refresh?: string; user: UserProfile }>(
-      res,
-      "Échec de l'inscription"
-    );
+    const rawJson = await safeFetchJson<any>(res, "Échec de l'inscription");
+    const normalizedUser = normalizeUserPayload(rawJson, data.username, data.email);
+    const token = rawJson.token || `token_${normalizedUser.id}`;
 
-    if (json.token) {
-      localStorage.setItem("fanorona_jwt_token", json.token);
-      localStorage.setItem("fanorona_refresh_token", json.refresh || json.token);
-    }
-    return json;
+    localStorage.setItem("fanorona_jwt_token", token);
+    localStorage.setItem("fanorona_refresh_token", rawJson.refresh || token);
+
+    return {
+      message: rawJson.message || "Inscription réussie !",
+      token,
+      refresh: rawJson.refresh || token,
+      user: normalizedUser,
+    };
   },
 
   async login(data: { username?: string; email?: string; password?: string }) {
@@ -131,16 +174,19 @@ export const api = {
       throw new Error("Impossible de joindre le serveur. Vérifiez votre connexion.");
     }
 
-    const json = await safeFetchJson<{ token: string; refresh?: string; user: UserProfile }>(
-      res,
-      "Identifiants invalides"
-    );
+    const rawJson = await safeFetchJson<any>(res, "Identifiants invalides");
+    const normalizedUser = normalizeUserPayload(rawJson, data.username || "Joueur", data.email);
+    const token = rawJson.token || `token_${normalizedUser.id}`;
 
-    if (json.token) {
-      localStorage.setItem("fanorona_jwt_token", json.token);
-      localStorage.setItem("fanorona_refresh_token", json.refresh || json.token);
-    }
-    return json;
+    localStorage.setItem("fanorona_jwt_token", token);
+    localStorage.setItem("fanorona_refresh_token", rawJson.refresh || token);
+
+    return {
+      message: rawJson.message || "Connexion réussie !",
+      token,
+      refresh: rawJson.refresh || token,
+      user: normalizedUser,
+    };
   },
 
   async logout() {

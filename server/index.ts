@@ -21,11 +21,23 @@ const io = new Server(server, {
 
 interface ServerUser {
   uid: string;
+  id?: string;
   username: string;
   displayName: string;
   email: string;
   photoURL: string;
+  avatar_url?: string;
+  player_id?: string;
+  isa?: number;
+  games_played?: number;
+  wins?: number;
+  losses?: number;
+  draws?: number;
+  win_rate?: number;
   createdAt: string;
+  created_at?: string;
+  last_activity?: string;
+  status?: string;
 }
 
 interface ServerGameSession {
@@ -52,9 +64,19 @@ const activeGames = new Map<string, ServerGameSession>();
 const registeredUsers = new Map<string, ServerUser>();
 const friendships = new Map<string, ServerFriendship>();
 
-// User Authentication API - Unique ID Generation
-app.post("/api/auth/login", (req, res) => {
-  const { username, photoURL } = req.body;
+// Helper to generate 6-character player ID
+function generatePlayerId(): string {
+  const chars = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789";
+  let result = "";
+  for (let i = 0; i < 6; i++) {
+    result += chars.charAt(Math.floor(Math.random() * chars.length));
+  }
+  return result;
+}
+
+// User Registration API
+app.post(["/api/auth/register", "/api/auth/register/"], (req, res) => {
+  const { username, email, password, avatar_url, photoURL } = req.body;
   if (!username || typeof username !== "string" || !username.trim()) {
     return res.status(400).json({ error: "Le nom d'utilisateur est requis" });
   }
@@ -62,22 +84,89 @@ app.post("/api/auth/login", (req, res) => {
   const cleanName = username.trim();
   const normalizedKey = cleanName.toLowerCase();
 
+  if (registeredUsers.has(normalizedKey)) {
+    return res.status(400).json({ error: "Ce nom d'utilisateur est déjà utilisé" });
+  }
+
+  const uniqueId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+  const playerId = generatePlayerId();
+  const avatar = avatar_url || photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`;
+
+  const user: ServerUser = {
+    uid: uniqueId,
+    id: uniqueId,
+    username: cleanName,
+    displayName: cleanName,
+    email: email ? email.trim() : `${normalizedKey}@fanorona.local`,
+    photoURL: avatar,
+    avatar_url: avatar,
+    player_id: playerId,
+    isa: 1200,
+    games_played: 0,
+    wins: 0,
+    losses: 0,
+    draws: 0,
+    win_rate: 0,
+    createdAt: new Date().toISOString(),
+    created_at: new Date().toISOString(),
+    last_activity: new Date().toISOString(),
+    status: "ONLINE",
+  };
+
+  registeredUsers.set(normalizedKey, user);
+
+  res.status(201).json({
+    message: "Inscription réussie !",
+    token: `token_${uniqueId}`,
+    user,
+  });
+});
+
+// User Authentication API - Login or Auto-Register
+app.post(["/api/auth/login", "/api/auth/login/"], (req, res) => {
+  const { username, email, photoURL, avatar_url } = req.body;
+  const rawIdentifier = username || email || "";
+  if (!rawIdentifier || typeof rawIdentifier !== "string" || !rawIdentifier.trim()) {
+    return res.status(400).json({ error: "Le nom d'utilisateur est requis" });
+  }
+
+  const cleanName = rawIdentifier.trim();
+  const normalizedKey = cleanName.toLowerCase();
+
   let user = registeredUsers.get(normalizedKey);
   if (!user) {
     // Generate permanent unique user ID
     const uniqueId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+    const playerId = generatePlayerId();
+    const avatar = avatar_url || photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(cleanName)}`;
     user = {
       uid: uniqueId,
+      id: uniqueId,
       username: cleanName,
       displayName: cleanName,
-      email: `${normalizedKey}@fanorona.local`,
-      photoURL: photoURL || "",
+      email: email || `${normalizedKey}@fanorona.local`,
+      photoURL: avatar,
+      avatar_url: avatar,
+      player_id: playerId,
+      isa: 1200,
+      games_played: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      win_rate: 0,
       createdAt: new Date().toISOString(),
+      created_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
     };
     registeredUsers.set(normalizedKey, user);
   }
 
-  res.json({ user });
+  res.json({
+    message: "Connexion réussie !",
+    token: `token_${user.uid}`,
+    user,
+  });
 });
 
 // Friends Management API
