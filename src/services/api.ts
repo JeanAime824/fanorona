@@ -1,7 +1,7 @@
 /**
  * @file api.ts
  * REST API client for Fanorona backend.
- * Handles JWT token injection, auto-refresh, and error normalization.
+ * Handles JWT token injection, safe JSON parsing, and graceful error normalization.
  */
 
 import {
@@ -27,16 +27,56 @@ function getAuthHeaders(): HeadersInit {
   return headers;
 }
 
+/**
+ * Safely parse JSON from a fetch Response.
+ * Protects against `JSON.parse: unexpected character at line 1 column 1`
+ * when servers return HTML (500, 404, or proxy errors).
+ */
+async function safeFetchJson<T = any>(res: Response, fallbackError = "Erreur de communication avec le serveur"): Promise<T> {
+  const text = await res.text();
+  let json: any = null;
+
+  if (text && text.trim().length > 0) {
+    try {
+      json = JSON.parse(text);
+    } catch {
+      // Received HTML or plain-text response (e.g. 404, 502, or error stack)
+      if (!res.ok) {
+        throw new Error(`Erreur serveur (${res.status}) : Impossible de traiter la requête.`);
+      }
+      throw new Error("Réponse inattendue du serveur.");
+    }
+  } else {
+    json = {};
+  }
+
+  if (!res.ok) {
+    throw new Error(json?.error || json?.message || fallbackError);
+  }
+
+  return json as T;
+}
+
 export const api = {
   // Auth
   async register(data: { username: string; email: string; password?: string; avatar_url?: string }) {
-    const res = await fetch(`${API_BASE_URL}/api/auth/register/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Échec de l'inscription");
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE_URL}/api/auth/register/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    } catch (networkErr: any) {
+      // Direct network failure fallback
+      throw new Error("Impossible de joindre le serveur. Vérifiez votre connexion internet.");
+    }
+
+    const json = await safeFetchJson<{ token: string; refresh?: string; user: UserProfile }>(
+      res,
+      "Échec de l'inscription"
+    );
+
     if (json.token) {
       localStorage.setItem("fanorona_jwt_token", json.token);
       localStorage.setItem("fanorona_refresh_token", json.refresh || json.token);
@@ -45,13 +85,22 @@ export const api = {
   },
 
   async login(data: { username?: string; email?: string; password?: string }) {
-    const res = await fetch(`${API_BASE_URL}/api/auth/login/`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(data),
-    });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Identifiants invalides");
+    let res: Response;
+    try {
+      res = await fetch(`${API_BASE_URL}/api/auth/login/`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    } catch (networkErr: any) {
+      throw new Error("Impossible de joindre le serveur. Vérifiez votre connexion.");
+    }
+
+    const json = await safeFetchJson<{ token: string; refresh?: string; user: UserProfile }>(
+      res,
+      "Identifiants invalides"
+    );
+
     if (json.token) {
       localStorage.setItem("fanorona_jwt_token", json.token);
       localStorage.setItem("fanorona_refresh_token", json.refresh || json.token);
@@ -60,26 +109,34 @@ export const api = {
   },
 
   async logout() {
-    const res = await fetch(`${API_BASE_URL}/api/auth/logout/`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/logout/`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+      });
+      return await safeFetchJson(res, "Erreur lors de la déconnexion");
+    } catch {
+      return { success: true };
+    }
   },
 
   async getMe(): Promise<UserProfile | null> {
     const token = localStorage.getItem("fanorona_jwt_token");
     if (!token) return null;
-    const res = await fetch(`${API_BASE_URL}/api/auth/me/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) {
-      if (res.status === 401) {
-        localStorage.removeItem("fanorona_jwt_token");
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/auth/me/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) {
+        if (res.status === 401) {
+          localStorage.removeItem("fanorona_jwt_token");
+        }
+        return null;
       }
+      return await safeFetchJson<UserProfile>(res);
+    } catch {
       return null;
     }
-    return res.json();
   },
 
   async updateProfile(data: { username?: string; avatar_url?: string }): Promise<UserProfile> {
@@ -88,72 +145,98 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify(data),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Impossible de mettre à jour le profil");
-    return json;
+    return safeFetchJson<UserProfile>(res, "Impossible de mettre à jour le profil");
   },
 
   // Users & Search
   async searchUsers(query: string): Promise<UserSearchResult[]> {
-    const res = await fetch(`${API_BASE_URL}/api/users/search/?q=${encodeURIComponent(query)}`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/users/search/?q=${encodeURIComponent(query)}`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return [];
+      return await safeFetchJson<UserSearchResult[]>(res);
+    } catch {
+      return [];
+    }
   },
 
   async getPublicProfile(playerId: string): Promise<UserSearchResult | null> {
-    const res = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(playerId)}/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return null;
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/users/${encodeURIComponent(playerId)}/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return null;
+      return await safeFetchJson<UserSearchResult>(res);
+    } catch {
+      return null;
+    }
   },
 
   // Leaderboard
   async getLeaderboard(): Promise<(UserProfile & { rank: number })[]> {
-    const res = await fetch(`${API_BASE_URL}/api/leaderboard/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/leaderboard/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return [];
+      return await safeFetchJson<(UserProfile & { rank: number })[]>(res);
+    } catch {
+      return [];
+    }
   },
 
   // Stats & Rating History
   async getStatistics(): Promise<UserStatistics | null> {
-    const res = await fetch(`${API_BASE_URL}/api/statistics/me/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return null;
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/statistics/me/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return null;
+      return await safeFetchJson<UserStatistics>(res);
+    } catch {
+      return null;
+    }
   },
 
   async getRatingHistory(): Promise<RatingHistoryEntry[]> {
-    const res = await fetch(`${API_BASE_URL}/api/rating-history/me/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/rating-history/me/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return [];
+      return await safeFetchJson<RatingHistoryEntry[]>(res);
+    } catch {
+      return [];
+    }
   },
 
   // Friends
   async getFriends(): Promise<{ id: string; friend: UserProfile; created_at: string }[]> {
-    const res = await fetch(`${API_BASE_URL}/api/friends/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/friends/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return [];
+      return await safeFetchJson(res);
+    } catch {
+      return [];
+    }
   },
 
   async getFriendRequests(): Promise<{
     received: { id: string; sender: UserProfile; created_at: string }[];
     sent: { id: string; receiver: UserProfile; created_at: string }[];
   }> {
-    const res = await fetch(`${API_BASE_URL}/api/friends/requests/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return { received: [], sent: [] };
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/friends/requests/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return { received: [], sent: [] };
+      return await safeFetchJson(res);
+    } catch {
+      return { received: [], sent: [] };
+    }
   },
 
   async sendFriendRequest(params: { target_user_id?: string; player_id?: string }) {
@@ -162,9 +245,7 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify(params),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Impossible d'envoyer la demande");
-    return json;
+    return safeFetchJson(res, "Impossible d'envoyer la demande");
   },
 
   async acceptFriendRequest(requestId: string) {
@@ -172,9 +253,7 @@ export const api = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Impossible d'accepter");
-    return json;
+    return safeFetchJson(res, "Impossible d'accepter");
   },
 
   async rejectFriendRequest(requestId: string) {
@@ -182,7 +261,7 @@ export const api = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    return res.json();
+    return safeFetchJson(res, "Impossible de refuser");
   },
 
   async cancelFriendRequest(requestId: string) {
@@ -190,7 +269,7 @@ export const api = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    return res.json();
+    return safeFetchJson(res, "Impossible d'annuler");
   },
 
   async deleteFriend(friendshipOrUserId: string) {
@@ -198,16 +277,20 @@ export const api = {
       method: "DELETE",
       headers: getAuthHeaders(),
     });
-    return res.json();
+    return safeFetchJson(res, "Impossible de supprimer cet ami");
   },
 
   // Notifications
   async getNotifications(): Promise<NotificationItem[]> {
-    const res = await fetch(`${API_BASE_URL}/api/notifications/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/notifications/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return [];
+      return await safeFetchJson<NotificationItem[]>(res);
+    } catch {
+      return [];
+    }
   },
 
   async markNotificationAsRead(id: string) {
@@ -215,7 +298,7 @@ export const api = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    return res.json();
+    return safeFetchJson(res);
   },
 
   async markAllNotificationsAsRead() {
@@ -223,7 +306,7 @@ export const api = {
       method: "POST",
       headers: getAuthHeaders(),
     });
-    return res.json();
+    return safeFetchJson(res);
   },
 
   // Games
@@ -238,17 +321,19 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify(params),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Impossible de créer la partie");
-    return json;
+    return safeFetchJson(res, "Impossible de créer la partie");
   },
 
   async getGame(idOrCode: string) {
-    const res = await fetch(`${API_BASE_URL}/api/games/${idOrCode}/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return null;
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/games/${idOrCode}/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return null;
+      return await safeFetchJson(res);
+    } catch {
+      return null;
+    }
   },
 
   async joinGame(idOrCode: string, playerName?: string) {
@@ -257,16 +342,18 @@ export const api = {
       headers: getAuthHeaders(),
       body: JSON.stringify({ player_name: playerName }),
     });
-    const json = await res.json();
-    if (!res.ok) throw new Error(json.error || "Impossible de rejoindre la partie");
-    return json;
+    return safeFetchJson(res, "Impossible de rejoindre la partie");
   },
 
   async getGameMoves(idOrCode: string) {
-    const res = await fetch(`${API_BASE_URL}/api/games/${idOrCode}/moves/`, {
-      headers: getAuthHeaders(),
-    });
-    if (!res.ok) return [];
-    return res.json();
+    try {
+      const res = await fetch(`${API_BASE_URL}/api/games/${idOrCode}/moves/`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return [];
+      return await safeFetchJson(res);
+    } catch {
+      return [];
+    }
   },
 };

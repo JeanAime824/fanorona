@@ -227,6 +227,7 @@ async function startServer() {
 
   app.use(cors());
   app.use(express.json());
+  app.use(express.urlencoded({ extended: true }));
 
   // Socket.io setup with HTTP server
   const server = http.createServer(app);
