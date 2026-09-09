@@ -50,11 +50,11 @@ describe("Initial Board & Game Setup", () => {
       "white",
       "black",
       "white",
-      null, // Center empty
-      "white",
+      null, // Center empty (E3)
       "black",
       "white",
       "black",
+      "white",
     ]);
   });
 

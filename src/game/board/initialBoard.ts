@@ -40,20 +40,20 @@ export function createInitialBoard(): (Piece | null)[][] {
     }
   }
 
-  // Row 2: Middle row pattern as shown in the authentic layout:
-  // Col 0: Black, Col 1: White, Col 2: Black, Col 3: White
-  // Center (Col 4): null (empty)
-  // Col 5: White, Col 6: Black, Col 7: White, Col 8: Black
+  // Row 2: Middle row pattern (A3 to I3):
+  // Col 0 (A3): Black, Col 1 (B3): White, Col 2 (C3): Black, Col 3 (D3): White
+  // Center (Col 4 / E3): null (empty)
+  // Col 5 (F3): Black, Col 6 (G3): White, Col 7 (H3): Black, Col 8 (I3): White
   const middleRowSetup: (Player | null)[] = [
     "black",
     "white",
     "black",
     "white",
     null,
-    "white",
     "black",
     "white",
     "black",
+    "white",
   ];
 
   for (let c = 0; c < BOARD_COLS; c++) {
