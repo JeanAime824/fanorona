@@ -95,10 +95,10 @@ export const Navbar: React.FC<NavbarProps> = ({
                 onSelectTab("game");
                 onOpenNewGame();
               }}
-              className="px-3 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 bg-[#C8A452] hover:bg-[#D4AF37] text-black shadow-md shadow-[#C8A452]/20 active:scale-95"
+              className="px-3.5 py-1.5 rounded-lg text-xs font-bold tracking-wide transition-all cursor-pointer flex items-center gap-1.5 bg-[#A8432E] hover:bg-[#C45A3C] text-white shadow-md shadow-[#A8432E]/30 active:scale-95 border border-[#C45A3C]/40"
             >
-              <Gamepad2 className="w-3.5 h-3.5 fill-current" />
-              <span>Nouvelle Partie</span>
+              <Gamepad2 className="w-3.5 h-3.5 fill-current text-white" />
+              <span>NOUVELLE PARTIE</span>
             </button>
           )}
 
