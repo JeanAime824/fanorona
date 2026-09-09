@@ -439,6 +439,26 @@ export const api = {
     }
   },
 
+  async getLobbyGames(): Promise<{
+    id: string;
+    unique_game_code: string;
+    host_name: string;
+    host_isa: number;
+    host_id: string;
+    time_control: number;
+    created_at: string;
+  }[]> {
+    try {
+      const res = await resilientFetch(`${API_BASE_URL}/api/games/lobby`, {
+        headers: getAuthHeaders(),
+      });
+      if (!res.ok) return [];
+      return await safeFetchJson(res);
+    } catch {
+      return [];
+    }
+  },
+
   async quickMatch(timeControl = 300) {
     const res = await resilientFetch(`${API_BASE_URL}/api/games/quick-match`, {
       method: "POST",

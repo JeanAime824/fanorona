@@ -47,12 +47,17 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   const [timeLimit, setTimeLimit] = useState<number>(initialTimeLimit);
   const [selectedFriendId, setSelectedFriendId] = useState<string | null>(null);
   const [friendsList, setFriendsList] = useState<{ id: string; friend: any }[]>([]);
+  const [lobbyGames, setLobbyGames] = useState<any[]>([]);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
 
   useEffect(() => {
     if (isOpen) {
       api.getFriends().then((res) => {
         if (Array.isArray(res)) setFriendsList(res);
+      }).catch(() => {});
+
+      api.getLobbyGames().then((res) => {
+        if (Array.isArray(res)) setLobbyGames(res);
       }).catch(() => {});
     }
   }, [isOpen]);
@@ -187,6 +192,78 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
             </button>
           </div>
         </div>
+
+        {/* Online Challenges Lobby (if Online Match mode - Chess.com style) */}
+        {(selectedMode as string) === "online_match" && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <label className="block text-[11px] font-semibold uppercase tracking-widest text-[#C8A452]">
+                Salon des Défis en Ligne
+              </label>
+              <button
+                type="button"
+                onClick={() => {
+                  api.getLobbyGames().then((res) => {
+                    if (Array.isArray(res)) setLobbyGames(res);
+                  });
+                }}
+                className="text-[10px] text-[#9E9890] hover:text-[#F5F3EE] underline cursor-pointer"
+              >
+                Actualiser
+              </button>
+            </div>
+
+            {lobbyGames.length === 0 ? (
+              <div className="p-4 rounded-xl bg-white/[0.02] border border-white/10 text-center space-y-2">
+                <Globe className="w-6 h-6 mx-auto text-[#C8A452]" />
+                <div className="text-xs font-semibold text-[#F5F3EE]">Aucun défi en attente actuellement</div>
+                <p className="text-[10px] text-[#9E9890]">
+                  Cliquez sur <strong className="text-[#C8A452]">Lancer la partie</strong> ci-dessous pour créer un défi et rechercher automatiquement un adversaire.
+                </p>
+              </div>
+            ) : (
+              <div className="max-h-44 overflow-y-auto space-y-1.5 p-2 bg-white/[0.03] rounded-xl border border-white/[0.08]">
+                {lobbyGames.map((game) => (
+                  <div
+                    key={game.id}
+                    className="p-2.5 rounded-xl bg-white/[0.02] border border-white/5 flex items-center justify-between gap-3 hover:border-[#C8A452]/40 transition-all"
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-[#F5F3EE] flex items-center gap-1.5">
+                        <span>{game.host_name}</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.2 rounded bg-[#C8A452]/20 text-[#C8A452]">
+                          {game.host_isa} Isa
+                        </span>
+                      </div>
+                      <div className="text-[10px] text-[#9E9890] pt-0.5">
+                        Code: <span className="font-mono text-white/70">{game.unique_game_code}</span> · {game.time_control}s
+                      </div>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={async () => {
+                        setIsCreatingGame(true);
+                        try {
+                          await api.joinGame(game.id, user?.displayName || "Joueur");
+                          onStartGame("multiplayer", "medium", "black", false, game.time_control, game.id);
+                          onClose();
+                        } catch (err) {
+                          console.error("Erreur rejoindre partie:", err);
+                        } finally {
+                          setIsCreatingGame(false);
+                        }
+                      }}
+                      className="px-3 py-1.5 rounded-lg bg-[#C8A452] hover:bg-[#D4AF37] text-black text-xs font-bold transition-all cursor-pointer shadow-sm"
+                    >
+                      Défier
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
 
         {/* AI Difficulty (if AI mode) */}
         {selectedMode === "ai" && (
