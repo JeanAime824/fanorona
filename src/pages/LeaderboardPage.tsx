@@ -95,6 +95,14 @@ export const LeaderboardPage: React.FC<LeaderboardPageProps> = ({
           <div className="p-12 text-center text-xs text-[#9E9890] animate-pulse">
             Chargement du classement depuis la base de données...
           </div>
+        ) : players.length === 0 ? (
+          <div className="p-12 text-center space-y-2">
+            <Trophy className="w-10 h-10 mx-auto text-[#9E9890]/40" />
+            <div className="text-sm font-semibold text-[#F5F3EE]">Aucun joueur classé pour le moment</div>
+            <p className="text-xs text-[#9E9890] max-w-sm mx-auto">
+              Jouez une partie en ligne ou inscrivez-vous pour apparaître dans le classement officiel.
+            </p>
+          </div>
         ) : (
           <div className="divide-y divide-white/[0.06]">
             {/* Table Header */}
