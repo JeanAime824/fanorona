@@ -192,6 +192,14 @@ async function startServer() {
   app.use(express.json());
   app.use(express.urlencoded({ extended: true }));
 
+  // Prevent API caching (no-store to avoid Vercel CDN 304 Not Modified cache hits on dynamic search)
+  app.use("/api", (req, res, next) => {
+    res.setHeader("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+    res.setHeader("Pragma", "no-cache");
+    res.setHeader("Expires", "0");
+    next();
+  });
+
   // Socket.io setup with HTTP server
   const server = http.createServer(app);
   const io = new Server(server, {
