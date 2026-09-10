@@ -17,6 +17,7 @@ import {
   ExternalLink,
 } from "lucide-react";
 import { api } from "../../services/api";
+import { socketService } from "../../services/socketService";
 import { NotificationItem } from "../../game/types/userTypes";
 import { useAuth } from "../../context/AuthContext";
 
@@ -48,16 +49,10 @@ export const NotificationCenter: React.FC<NotificationCenterProps> = ({
     fetchNotifications();
 
     // Listen to real-time notifications from socket service
-    const socketService = (window as any).__fanorona_socket_service;
-    if (socketService?.socket) {
-      const handleNotif = (notif: NotificationItem) => {
-        setNotifications((prev) => [notif, ...prev]);
-      };
-      socketService.socket.on("notification_received", handleNotif);
-      return () => {
-        socketService.socket.off("notification_received", handleNotif);
-      };
-    }
+    const handleNotif = (notif: NotificationItem) => {
+      setNotifications((prev) => [notif, ...prev]);
+    };
+    socketService.onNotificationReceived(handleNotif);
   }, [user]);
 
   // Close on outside click

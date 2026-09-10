@@ -303,6 +303,19 @@ export const api = {
     }
   },
 
+  async getCommunityUsers(): Promise<UserSearchResult[]> {
+    try {
+      const res = await resilientFetch(`${API_BASE_URL}/api/users/community?_t=${Date.now()}`, {
+        headers: getAuthHeaders(),
+        cache: "no-store",
+      });
+      if (!res.ok) return [];
+      return await safeFetchJson<UserSearchResult[]>(res);
+    } catch {
+      return [];
+    }
+  },
+
   async getPublicProfile(playerId: string): Promise<UserSearchResult | null> {
     try {
       const res = await resilientFetch(`${API_BASE_URL}/api/users/${encodeURIComponent(playerId)}`, {

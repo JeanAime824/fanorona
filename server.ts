@@ -1,6 +1,7 @@
 import express, { Request, Response, NextFunction } from "express";
 import http from "http";
 import path from "path";
+import fs from "fs";
 import { Server, Socket } from "socket.io";
 import cors from "cors";
 import jwt from "jsonwebtoken";
@@ -137,7 +138,7 @@ interface GameDbRecord {
   moves: GameMoveDbRecord[];
 }
 
-// In-Memory Database collections
+// In-Memory Database collections with persistent disk fallback
 const users = new Map<string, UserDbRecord>(); // by user ID
 const usersByPlayerId = new Map<string, UserDbRecord>(); // by 6-char player_id
 const usersByUsername = new Map<string, UserDbRecord>(); // by lowercase username
@@ -147,6 +148,81 @@ const friendships = new Map<string, FriendshipDbRecord>(); // by friendship ID
 const notifications = new Map<string, NotificationDbRecord>(); // by notification ID
 const games = new Map<string, GameDbRecord>(); // by game ID or code
 const gamesByCode = new Map<string, GameDbRecord>();
+
+const DATA_DIR = path.join(process.cwd(), "data");
+const DATA_FILE = path.join(DATA_DIR, "fanorona_store.json");
+
+function loadFromDisk() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    if (fs.existsSync(DATA_FILE)) {
+      const raw = fs.readFileSync(DATA_FILE, "utf-8");
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.users)) {
+        for (const u of data.users) {
+          users.set(u.id, u);
+          usersByPlayerId.set(u.player_id.toUpperCase(), u);
+          usersByUsername.set(u.username.toLowerCase(), u);
+        }
+      }
+      if (Array.isArray(data.friendships)) {
+        for (const f of data.friendships) friendships.set(f.id, f);
+      }
+      if (Array.isArray(data.friendRequests)) {
+        for (const fr of data.friendRequests) friendRequests.set(fr.id, fr);
+      }
+      if (Array.isArray(data.gameInvitations)) {
+        for (const gi of data.gameInvitations) gameInvitations.set(gi.id, gi);
+      }
+      if (Array.isArray(data.games)) {
+        for (const g of data.games) {
+          games.set(g.id, g);
+          if (g.unique_game_code) gamesByCode.set(g.unique_game_code, g);
+        }
+      }
+      if (Array.isArray(data.notifications)) {
+        for (const n of data.notifications) notifications.set(n.id, n);
+      }
+      if (data.ratingHistories && typeof data.ratingHistories === "object") {
+        for (const [k, v] of Object.entries(data.ratingHistories)) {
+          ratingHistories.set(k, v as RatingHistoryDbRecord[]);
+        }
+      }
+      console.log(`[Storage] Restored ${users.size} users, ${friendships.size} friendships, ${games.size} games from persistent storage.`);
+    }
+  } catch (err) {
+    console.error("[Storage] Error loading data from disk:", err);
+  }
+}
+
+function saveToDisk() {
+  try {
+    if (!fs.existsSync(DATA_DIR)) {
+      fs.mkdirSync(DATA_DIR, { recursive: true });
+    }
+    const rhObj: Record<string, RatingHistoryDbRecord[]> = {};
+    for (const [k, v] of ratingHistories.entries()) {
+      rhObj[k] = v;
+    }
+    const data = {
+      users: Array.from(users.values()),
+      friendships: Array.from(friendships.values()),
+      friendRequests: Array.from(friendRequests.values()),
+      gameInvitations: Array.from(gameInvitations.values()),
+      games: Array.from(games.values()).slice(-200),
+      notifications: Array.from(notifications.values()).slice(-500),
+      ratingHistories: rhObj,
+    };
+    fs.writeFileSync(DATA_FILE, JSON.stringify(data, null, 2), "utf-8");
+  } catch (err) {
+    console.error("[Storage] Error saving data to disk:", err);
+  }
+}
+
+// Initial restoration from storage
+loadFromDisk();
 
 // Helper to sanitize public user profile
 function toPublicProfile(u: UserDbRecord) {
@@ -198,6 +274,17 @@ async function startServer() {
     res.setHeader("Pragma", "no-cache");
     res.setHeader("Expires", "0");
     next();
+  });
+
+  // Early health check for container readiness probes
+  app.get(["/api/health", "/health", "/api/health/"], (req: Request, res: Response) => {
+    res.json({
+      status: "ok",
+      platform: "Fanorona Professional Web Edition",
+      registered_users: users.size,
+      active_games: games.size,
+      timestamp: new Date().toISOString(),
+    });
   });
 
   // Socket.io setup with HTTP server
@@ -714,6 +801,26 @@ async function startServer() {
       friend_request_id: friendRequestId,
     };
   }
+
+  // Community players list (all registered players, sorted by online status then Isa rating)
+  app.get(["/api/users/community", "/api/users/community/"], optionalJwt, (req: Request, res: Response) => {
+    const currentUser = (req as any).user as UserDbRecord | undefined;
+    const currentUserId = currentUser?.id;
+
+    const list = Array.from(users.values())
+      .filter((u) => !currentUserId || u.id !== currentUserId)
+      .map((u) => buildSearchResult(u, currentUserId))
+      .sort((a, b) => {
+        // Status hierarchy: ONLINE (0) > IN_GAME (1) > OFFLINE (2)
+        const order = { ONLINE: 0, IN_GAME: 1, OFFLINE: 2 };
+        const orderDiff =
+          (order[a.status as keyof typeof order] ?? 2) - (order[b.status as keyof typeof order] ?? 2);
+        if (orderDiff !== 0) return orderDiff;
+        return b.isa - a.isa;
+      });
+
+    res.json(list);
+  });
 
   app.get(["/api/users/:playerId", "/api/users/:playerId/"], optionalJwt, (req: Request, res: Response) => {
     const { playerId } = req.params;
@@ -1507,28 +1614,65 @@ async function startServer() {
 
     // Game Room Join
     socket.on("join_game_room", ({ gameId, user }) => {
-      socket.join(gameId);
-      const game = games.get(gameId) || gamesByCode.get(gameId.toUpperCase());
+      if (!gameId) return;
+      const cleanKey = gameId.toString().trim();
+      const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
+
+      socket.join(cleanKey);
       if (game) {
-        if (user && user.id) {
-          if (!game.player_black_id && game.player_white_id !== user.id) {
-            game.player_black_id = user.id;
-            game.player_black_name = user.username;
-            game.player_black_isa = user.isa || 1200;
+        socket.join(game.id);
+        if (game.unique_game_code) {
+          socket.join(game.unique_game_code);
+        }
+
+        const uid = user?.id || user?.uid;
+        const uname = user?.username || user?.displayName || user?.name;
+        const uisa = user?.isa || 1200;
+
+        if (uid) {
+          if (!game.player_black_id && game.player_white_id !== uid) {
+            game.player_black_id = uid;
+            game.player_black_name = uname || "Joueur Noir";
+            game.player_black_isa = uisa;
             game.status = "active";
           }
+          const u = users.get(uid);
+          if (u) {
+            u.status = "IN_GAME";
+            io.emit("user_presence_changed", { userId: uid, status: "IN_GAME" });
+          }
         }
-        io.to(gameId).emit("game_room_state", game);
+        saveToDisk();
+
+        // Broadcast to all potential room identifiers
+        io.to(game.id).emit("game_room_state", game);
+        if (game.unique_game_code && game.unique_game_code !== game.id) {
+          io.to(game.unique_game_code).emit("game_room_state", game);
+        }
+        if (cleanKey !== game.id && cleanKey !== game.unique_game_code) {
+          io.to(cleanKey).emit("game_room_state", game);
+        }
       }
     });
 
     // Make move (Validated by server authority)
     socket.on("make_move", ({ gameId, move }: { gameId: string; move: Move }) => {
-      const game = games.get(gameId) || gamesByCode.get(gameId.toUpperCase());
+      const cleanKey = gameId?.toString?.().trim();
+      const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
       if (!game) {
         socket.emit("error", { message: "Partie introuvable" });
         return;
       }
+
+      const emitToGame = (event: string, payload: any) => {
+        io.to(game.id).emit(event, payload);
+        if (game.unique_game_code && game.unique_game_code !== game.id) {
+          io.to(game.unique_game_code).emit(event, payload);
+        }
+        if (cleanKey && cleanKey !== game.id && cleanKey !== game.unique_game_code) {
+          io.to(cleanKey).emit(event, payload);
+        }
+      };
 
       try {
         // Apply move through authoritative Fanorona game engine
@@ -1650,7 +1794,7 @@ async function startServer() {
             }
           }
 
-          io.to(gameId).emit("game_over", {
+          emitToGame("game_over", {
             winner: nextState.winner,
             reason: nextState.reason,
             whiteIsaChange,
@@ -1658,7 +1802,9 @@ async function startServer() {
           });
         }
 
-        io.to(gameId).emit("move_made", { move, nextState, game });
+        saveToDisk();
+        emitToGame("move_made", { move, nextState, game });
+        emitToGame("game_room_state", game);
       } catch (err: any) {
         socket.emit("error", { message: err?.message || "Coup invalide." });
       }
@@ -1666,14 +1812,28 @@ async function startServer() {
 
     // End Turn
     socket.on("end_turn", ({ gameId }) => {
-      const game = games.get(gameId) || gamesByCode.get(gameId.toUpperCase());
+      const cleanKey = gameId?.toString?.().trim();
+      const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
       if (!game) return;
 
       try {
         const nextState = endTurn(game.game_state);
         game.game_state = nextState;
         game.current_turn = nextState.currentPlayer;
-        io.to(gameId).emit("turn_ended", { nextState, game });
+        saveToDisk();
+
+        const emitToGame = (event: string, payload: any) => {
+          io.to(game.id).emit(event, payload);
+          if (game.unique_game_code && game.unique_game_code !== game.id) {
+            io.to(game.unique_game_code).emit(event, payload);
+          }
+          if (cleanKey && cleanKey !== game.id && cleanKey !== game.unique_game_code) {
+            io.to(cleanKey).emit(event, payload);
+          }
+        };
+
+        emitToGame("turn_ended", { nextState, game });
+        emitToGame("game_room_state", game);
       } catch (err: any) {
         socket.emit("error", { message: err?.message || "Erreur lors de la fin du tour." });
       }
@@ -1681,7 +1841,8 @@ async function startServer() {
 
     // Resign
     socket.on("resign", ({ gameId, player }) => {
-      const game = games.get(gameId) || gamesByCode.get(gameId.toUpperCase());
+      const cleanKey = gameId?.toString?.().trim();
+      const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
       if (!game) return;
 
       try {
@@ -1690,11 +1851,23 @@ async function startServer() {
         game.status = "finished";
         game.winner = nextState.winner;
         game.finished_at = new Date().toISOString();
+        saveToDisk();
 
-        io.to(gameId).emit("game_over", {
+        const emitToGame = (event: string, payload: any) => {
+          io.to(game.id).emit(event, payload);
+          if (game.unique_game_code && game.unique_game_code !== game.id) {
+            io.to(game.unique_game_code).emit(event, payload);
+          }
+          if (cleanKey && cleanKey !== game.id && cleanKey !== game.unique_game_code) {
+            io.to(cleanKey).emit(event, payload);
+          }
+        };
+
+        emitToGame("game_over", {
           winner: nextState.winner,
           reason: nextState.reason,
         });
+        emitToGame("game_room_state", game);
       } catch (err: any) {
         console.error("Resign error:", err);
       }

@@ -202,7 +202,7 @@ export const FanoronaBoard: React.FC<FanoronaBoardProps> = ({
                     left: `${leftPercent}%`,
                     top: `${topPercent}%`,
                   }}
-                  className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 w-8 h-8 sm:w-10 sm:h-10 md:w-12 md:h-12 lg:w-14 lg:h-14 xl:w-16 xl:h-16 2xl:w-20 2xl:h-20 flex items-center justify-center pointer-events-none ${
+                  className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-11 lg:h-11 xl:w-12 xl:h-12 2xl:w-14 2xl:h-14 flex items-center justify-center pointer-events-none ${
                     animationsEnabled
                       ? "transition-[left,top] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
                       : "transition-none"

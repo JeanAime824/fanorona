@@ -22,6 +22,7 @@ import {
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
+import { socketService } from "../services/socketService";
 import { UserProfile, UserSearchResult } from "../game/types/userTypes";
 import { Button } from "../components/ui/Button";
 
@@ -37,12 +38,13 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
   onInviteToGame,
 }) => {
   const { user } = useAuth();
-  const [activeTab, setActiveTab] = useState<"friends" | "requests" | "search">("friends");
+  const [activeTab, setActiveTab] = useState<"friends" | "requests" | "search" | "community">("friends");
 
   // Data states
   const [friendsList, setFriendsList] = useState<{ id: string; friend: UserProfile; created_at: string }[]>([]);
   const [pendingReceived, setPendingReceived] = useState<{ id: string; sender: UserProfile; created_at: string }[]>([]);
   const [pendingSent, setPendingSent] = useState<{ id: string; receiver: UserProfile; created_at: string }[]>([]);
+  const [communityList, setCommunityList] = useState<UserSearchResult[]>([]);
   const [loading, setLoading] = useState(true);
 
   // Search states
@@ -55,10 +57,20 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
     if (!user) return;
     setLoading(true);
     try {
-      const [friends, requests] = await Promise.all([api.getFriends(), api.getFriendRequests()]);
+      const [friends, requests, community] = await Promise.all([
+        api.getFriends(),
+        api.getFriendRequests(),
+        api.getCommunityUsers(),
+      ]);
       setFriendsList(friends);
       setPendingReceived(requests.received);
       setPendingSent(requests.sent);
+      setCommunityList(community);
+
+      // If user has no friends yet, switch smoothly to community view
+      if (friends.length === 0 && community.length > 0 && activeTab === "friends") {
+        setActiveTab("community");
+      }
     } catch (err) {
       console.warn("Erreur chargement amis:", err);
     } finally {
@@ -68,7 +80,40 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
 
   useEffect(() => {
     loadFriendsData();
+
+    // Listen for real-time presence changes
+    socketService.onUserPresenceChanged(({ userId, status }) => {
+      setFriendsList((prev) =>
+        prev.map((f) => (f.friend.id === userId ? { ...f, friend: { ...f.friend, status } } : f))
+      );
+      setCommunityList((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, status } : u))
+      );
+      setSearchResults((prev) =>
+        prev.map((u) => (u.id === userId ? { ...u, status } : u))
+      );
+    });
+
+    // Listen for challenge acceptance
+    socketService.onChallengeAccepted(({ game_id }) => {
+      setActionMessage("Défi accepté ! Lancement de la partie...");
+      onNavigate("game");
+      setTimeout(() => {
+        window.dispatchEvent(new CustomEvent("start-online-game", { detail: { gameId: game_id } }));
+      }, 50);
+    });
   }, [user]);
+
+  const handleChallengePlayer = async (targetPlayer: UserSearchResult | UserProfile) => {
+    try {
+      setActionMessage(`Défi envoyé à ${targetPlayer.username}... En attente de réponse.`);
+      await api.sendChallenge({ target_user_id: targetPlayer.id, time_control: 300 });
+      setTimeout(() => setActionMessage(null), 5000);
+    } catch (err: any) {
+      setActionMessage(err?.message || "Impossible d'envoyer le défi");
+      setTimeout(() => setActionMessage(null), 4000);
+    }
+  };
 
   // Load player search results (including all registered players on empty query)
   const performSearch = async (query: string) => {
@@ -243,6 +288,21 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           <span>Mes Amis</span>
           <span className="px-1.5 py-0.5 rounded-full bg-white/10 text-[10px] text-[#F5F3EE]">
             {friendsList.length}
+          </span>
+        </button>
+
+        <button
+          onClick={() => setActiveTab("community")}
+          className={`px-4 py-2 rounded-xl text-xs font-semibold uppercase tracking-wider transition-colors cursor-pointer flex items-center gap-2 ${
+            activeTab === "community"
+              ? "bg-[#C8A452]/20 text-[#C8A452] border border-[#C8A452]/40"
+              : "text-[#9E9890] hover:text-[#F5F3EE] hover:bg-white/[0.04]"
+          }`}
+        >
+          <Users className="w-3.5 h-3.5" />
+          <span>Communauté & En ligne</span>
+          <span className="px-1.5 py-0.5 rounded-full bg-[#C8A452]/20 text-[10px] text-[#C8A452] font-bold">
+            {communityList.length}
           </span>
         </button>
 
@@ -537,6 +597,16 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
 
                   <div className="flex items-center gap-2">
                     <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleChallengePlayer(player)}
+                      title="Envoyer une invitation de partie"
+                    >
+                      <Gamepad2 className="w-3.5 h-3.5 mr-1 text-[#C8A452]" />
+                      <span>Défier</span>
+                    </Button>
+
+                    <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => onSelectPlayer(player.player_id)}
@@ -564,7 +634,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                       </Button>
                     ) : (
                       <Button
-                        variant="primary"
+                        variant="ghost"
                         size="sm"
                         onClick={() => handleSendRequest(player.id, player.player_id)}
                       >
@@ -581,6 +651,116 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
               Aucun joueur trouvé pour "{searchQuery}". Vérifiez le pseudo ou l'ID.
             </div>
           ) : null}
+        </div>
+      )}
+
+      {/* TAB 4: COMMUNITY & ONLINE PLAYERS */}
+      {activeTab === "community" && (
+        <div className="space-y-4">
+          <div className="p-4 bg-[#141210] border border-[#C8A452]/20 rounded-xl flex items-center justify-between gap-4">
+            <div>
+              <h2 className="text-sm font-bold text-[#F5F3EE]">Joueurs de la Communauté Fanorona</h2>
+              <p className="text-xs text-[#9E9890]">
+                Retrouvez tous les joueurs inscrits, visualisez leur statut en direct et défiez-les.
+              </p>
+            </div>
+            <button
+              onClick={loadFriendsData}
+              className="p-2 rounded-xl bg-white/[0.04] hover:bg-white/[0.08] border border-white/10 text-[#9E9890] hover:text-[#F5F3EE] transition-colors cursor-pointer"
+              title="Rafraîchir la liste"
+            >
+              <RefreshCw className={`w-4 h-4 ${loading ? "animate-spin" : ""}`} />
+            </button>
+          </div>
+
+          {communityList.length === 0 ? (
+            <div className="p-12 text-center text-xs text-[#9E9890] bg-[#141210] rounded-xl border border-white/[0.08]">
+              Chargement des joueurs de la communauté...
+            </div>
+          ) : (
+            <div className="divide-y divide-white/[0.06] bg-[#141210] border border-white/[0.08] rounded-xl overflow-hidden">
+              {communityList.map((player) => (
+                <div
+                  key={player.id}
+                  className="p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4 hover:bg-white/[0.02] transition-colors"
+                >
+                  <div className="flex items-center gap-3">
+                    <img
+                      src={
+                        player.avatar_url ||
+                        `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(
+                          player.username
+                        )}`
+                      }
+                      alt={player.username}
+                      className="w-11 h-11 rounded-xl object-cover border border-white/10 bg-[#1A1816]"
+                    />
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <span className="text-sm font-bold text-[#F5F3EE]">{player.username}</span>
+                        <span className="text-[10px] font-mono px-1.5 py-0.5 rounded bg-[#C8A452]/10 text-[#C8A452] font-bold">
+                          ID: {player.player_id}
+                        </span>
+                        {getStatusBadge(player.status)}
+                      </div>
+                      <div className="text-[11px] text-[#9E9890] pt-0.5">
+                        ⭐ {player.isa} Isa · {player.games_played} parties · {player.win_rate}% victoires
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex items-center gap-2">
+                    <Button
+                      variant="primary"
+                      size="sm"
+                      onClick={() => handleChallengePlayer(player)}
+                      title={`Lancer un défi à ${player.username}`}
+                    >
+                      <Gamepad2 className="w-3.5 h-3.5 mr-1.5 text-[#C8A452]" />
+                      <span>Défier</span>
+                    </Button>
+
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => onSelectPlayer(player.player_id)}
+                    >
+                      Profil
+                    </Button>
+
+                    {player.relation_status === "friends" ? (
+                      <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-semibold flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Amis</span>
+                      </div>
+                    ) : player.relation_status === "pending_sent" ? (
+                      <div className="px-3 py-1.5 rounded-xl bg-white/5 text-[#9E9890] text-xs flex items-center gap-1">
+                        <Clock className="w-3.5 h-3.5 text-[#C8A452]" />
+                        <span>Envoyé</span>
+                      </div>
+                    ) : player.relation_status === "pending_received" ? (
+                      <Button
+                        variant="primary"
+                        size="sm"
+                        onClick={() => setActiveTab("requests")}
+                      >
+                        Accepter
+                      </Button>
+                    ) : (
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleSendRequest(player.id, player.player_id)}
+                      >
+                        <UserPlus className="w-3.5 h-3.5 mr-1" />
+                        <span>Ajouter</span>
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       )}
     </div>

@@ -44,36 +44,36 @@ export const PieceStone: React.FC<PieceStoneProps> = ({
     >
       {/* Soft Contact Shadow */}
       <div
-        className={`absolute inset-0.5 rounded-full blur-[2px] pointer-events-none -z-10 transition-all ${
+        className={`absolute inset-1 rounded-full blur-[1.5px] pointer-events-none -z-10 transition-all ${
           isSelected
-            ? "bg-black/80 translate-y-1.5 scale-105"
-            : "bg-black/60 translate-y-1 scale-95"
+            ? "bg-black/75 translate-y-1 scale-100"
+            : "bg-black/50 translate-y-0.5 scale-85"
         }`}
       />
 
       {/* Selected Piece Ring - Terracotta Clay #C45A3C Accent */}
       {isSelected && (
         <motion.div
-          initial={{ scale: 0.95, opacity: 0 }}
-          animate={{ scale: 1.16, opacity: 1 }}
+          initial={{ scale: 0.85, opacity: 0 }}
+          animate={{ scale: 1.05, opacity: 1 }}
           transition={{ type: "spring", stiffness: 450, damping: 25 }}
-          className="absolute -inset-1 rounded-full border-2 border-[#C45A3C] pointer-events-none"
+          className="absolute -inset-0.5 rounded-full border-2 border-[#C45A3C] pointer-events-none"
         />
       )}
 
       {/* Multiple Capture Continuation Indicator */}
       {isInCaptureSequence && (
-        <div className="absolute -inset-1.5 rounded-full border border-[#C8A452]/70 animate-pulse pointer-events-none" />
+        <div className="absolute -inset-1 rounded-full border border-[#C8A452]/80 animate-pulse pointer-events-none" />
       )}
 
       {/* Capturable Target Indication */}
       {isCapturableTarget && (
-        <div className="absolute -inset-1 rounded-full border border-amber-400/80 pointer-events-none" />
+        <div className="absolute -inset-0.5 rounded-full border border-amber-400/80 pointer-events-none" />
       )}
 
-      {/* Tactile Stone Body - Natural Matte Finish */}
+      {/* Tactile Stone Body - Natural Matte Finish - Refined Compact Proportion */}
       <div
-        className={`relative w-[86%] h-[86%] rounded-full transition-colors ${
+        className={`relative w-[72%] h-[72%] rounded-full transition-colors ${
           isWhite
             ? "bg-[#E8DCC3] border border-[#D5C6A7] shadow-[inset_0_1px_1px_rgba(255,255,255,0.8),inset_0_-1px_2px_rgba(0,0,0,0.12)]"
             : "bg-[#29231F] border border-[#3A322C] shadow-[inset_0_1px_1px_rgba(255,255,255,0.1),inset_0_-1px_2px_rgba(0,0,0,0.6)]"

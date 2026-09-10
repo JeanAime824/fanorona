@@ -29,6 +29,7 @@ import {
   syncStatsAndSettingsToFirestore,
 } from "../services/firebase/syncService";
 import { storageService } from "../services/storage/storageService";
+import { socketService } from "../services/socketService";
 
 export interface PendingAmbiguousMove {
   from: Position;
@@ -302,6 +303,11 @@ export function useFanoronaGameEngine() {
         setPendingChoice(null);
         updateHistoryState();
 
+        // Broadcast move to opponent if playing online
+        if (gameState.gameMode === "multiplayer" && gameState.multiplayerGameId) {
+          socketService.makeMove(gameState.multiplayerGameId, move);
+        }
+
         // Non-blocking sound cue
         if (move.captures.length > 0) {
           if (nextState.captureSequence) {
@@ -492,6 +498,10 @@ export function useFanoronaGameEngine() {
     setPendingChoice(null);
     updateHistoryState();
     sound.playMove();
+
+    if (gameState.gameMode === "multiplayer" && gameState.multiplayerGameId) {
+      socketService.endTurn(gameState.multiplayerGameId);
+    }
   }, [gameState, updateHistoryState]);
 
   // Undo
@@ -524,7 +534,83 @@ export function useFanoronaGameEngine() {
     const nextState = resignGame(gameState, gameState.currentPlayer);
     setGameState(nextState);
     setPendingChoice(null);
+
+    if (gameState.gameMode === "multiplayer" && gameState.multiplayerGameId) {
+      socketService.resign(gameState.multiplayerGameId, gameState.currentPlayer);
+    }
   }, [gameState]);
+
+  // Real-time synchronization for online multiplayer games
+  useEffect(() => {
+    if (gameState.gameMode === "multiplayer" && gameState.multiplayerGameId) {
+      const gId = gameState.multiplayerGameId;
+
+      const handleMoveMade = ({ move, nextState }: any) => {
+        if (nextState) {
+          setGameState((prev) => ({
+            ...nextState,
+            gameMode: "multiplayer",
+            multiplayerGameId: gId,
+          }));
+          updateHistoryState();
+          if (move?.captures?.length > 0) {
+            sound.playCapture();
+          } else {
+            sound.playMove();
+          }
+        }
+      };
+
+      const handleTurnEnded = ({ nextState }: any) => {
+        if (nextState) {
+          setGameState((prev) => ({
+            ...nextState,
+            gameMode: "multiplayer",
+            multiplayerGameId: gId,
+          }));
+          updateHistoryState();
+          sound.playSelect();
+        }
+      };
+
+      const handleGameOver = ({ winner, reason }: any) => {
+        setGameState((prev) => ({
+          ...prev,
+          status: "game_over",
+          winner: winner || "draw",
+          reason: reason || "Partie terminée",
+        }));
+        sound.playVictory();
+      };
+
+      const handleGameRoomState = (serverGame: any) => {
+        if (serverGame && serverGame.game_state) {
+          setGameState((prev) => {
+            if (
+              serverGame.game_state.turnNumber !== prev.turnNumber ||
+              serverGame.game_state.currentPlayer !== prev.currentPlayer ||
+              serverGame.status === "finished"
+            ) {
+              return {
+                ...serverGame.game_state,
+                gameMode: "multiplayer",
+                multiplayerGameId: gId,
+                status: serverGame.status === "finished" ? "game_over" : serverGame.game_state.status,
+                winner: serverGame.winner || serverGame.game_state.winner,
+              };
+            }
+            return prev;
+          });
+          updateHistoryState();
+        }
+      };
+
+      socketService.onMoveMade(handleMoveMade);
+      socketService.onTurnEnded(handleTurnEnded);
+      socketService.onGameOver(handleGameOver);
+      socketService.onGameRoomState(handleGameRoomState);
+    }
+  }, [gameState.gameMode, gameState.multiplayerGameId, updateHistoryState]);
 
   // Settings updater
   const updateSettings = useCallback(

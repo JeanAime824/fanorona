@@ -19,6 +19,7 @@ import { AiDifficulty, GameMode, Player } from "../game/types/gameTypes";
 import { useFanoronaGame } from "../hooks/useFanoronaGame";
 import { useAuth } from "../context/AuthContext";
 import { useMultiplayer } from "../hooks/useMultiplayer";
+import { socketService } from "../services/socketService";
 import { AlertCircle, Wifi, WifiOff } from "lucide-react";
 
 export const GamePage: React.FC = () => {
@@ -73,6 +74,13 @@ export const GamePage: React.FC = () => {
   useEffect(() => {
     if (gameState.gameMode === "multiplayer" && gameState.multiplayerGameId) {
       setMultiplayerGameId(gameState.multiplayerGameId);
+
+      // Join socket game room on backend authority
+      socketService.joinGameRoom(gameState.multiplayerGameId, {
+        id: user?.id,
+        username: user?.username || user?.displayName,
+        isa: user?.isa,
+      });
       
       multiActions.updateLiveGame(
         gameState.multiplayerGameId,
@@ -88,7 +96,7 @@ export const GamePage: React.FC = () => {
           : undefined
       );
     }
-  }, [gameState, multiState]);
+  }, [gameState.gameMode, gameState.multiplayerGameId, user?.id]);
 
   // End multiplayer game on game over
   useEffect(() => {

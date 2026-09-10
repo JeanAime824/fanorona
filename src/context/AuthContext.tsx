@@ -11,6 +11,7 @@ import { auth, googleProvider } from "../services/firebase/firebase";
 import { GameSettings, GameStats } from "../game/types/gameTypes";
 import { UserProfile } from "../game/types/userTypes";
 import { api } from "../services/api";
+import { socketService } from "../services/socketService";
 
 export interface CloudGameRecord {
   id: string;
@@ -77,10 +78,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       try {
         const token = localStorage.getItem("fanorona_jwt_token");
-        const socketService = (window as any).__fanorona_socket_service;
-        if (socketService && typeof socketService.authenticate === "function") {
-          socketService.authenticate(token, user.id);
-        }
+        socketService.authenticate(token, user.id);
       } catch (err) {
         console.warn("Socket auth sync:", err);
       }

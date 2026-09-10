@@ -87,6 +87,52 @@ class SocketService {
     socket.emit("join_game", { gameId, playerId, playerName });
   }
 
+  public joinGameRoom(gameId: string, user?: { id?: string; username?: string; isa?: number }) {
+    const socket = this.connect();
+    socket.emit("join_game_room", { gameId, user });
+  }
+
+  public onGameRoomState(callback: (game: any) => void) {
+    const socket = this.connect();
+    socket.off("game_room_state");
+    socket.on("game_room_state", callback);
+  }
+
+  public onMoveMade(callback: (data: { move: Move; nextState: any; currentTurn: Player }) => void) {
+    const socket = this.connect();
+    socket.off("move_made");
+    socket.on("move_made", callback);
+  }
+
+  public onTurnEnded(callback: (data: { nextState: any; currentTurn: Player }) => void) {
+    const socket = this.connect();
+    socket.off("turn_ended");
+    socket.on("turn_ended", callback);
+  }
+
+  public onGameOver(callback: (data: { winner: Player | "draw"; reason?: string }) => void) {
+    const socket = this.connect();
+    socket.off("game_over");
+    socket.on("game_over", callback);
+  }
+
+  public onUserPresenceChanged(callback: (data: { userId: string; status: "ONLINE" | "IN_GAME" | "OFFLINE" }) => void) {
+    const socket = this.connect();
+    socket.off("user_presence_changed");
+    socket.on("user_presence_changed", callback);
+  }
+
+  public onLobbyUpdated(callback: () => void) {
+    const socket = this.connect();
+    socket.off("lobby_updated");
+    socket.on("lobby_updated", callback);
+  }
+
+  public sendPresencePing(userId: string) {
+    const socket = this.connect();
+    socket.emit("presence_ping", { userId });
+  }
+
   public makeMove(gameId: string, move: Move) {
     const socket = this.connect();
     socket.emit("make_move", { gameId, move });
@@ -143,3 +189,6 @@ class SocketService {
 }
 
 export const socketService = new SocketService();
+if (typeof window !== "undefined") {
+  (window as any).__fanorona_socket = socketService;
+}
