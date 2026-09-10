@@ -250,7 +250,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       displayName: `Invité_${randomSuffix}`,
       email: `invite_${randomSuffix}@fanorona.local`,
       player_id: randomPid,
-      isa: 1200,
+      isa: 100,
       games_played: 0,
       wins: 0,
       losses: 0,

@@ -107,7 +107,7 @@ function normalizeUserPayload(raw: any, fallbackName: string, fallbackEmail?: st
     username: uname,
     email: uemail,
     player_id: pid,
-    isa: typeof u.isa === "number" ? Math.max(100, u.isa) : 1200,
+    isa: typeof u.isa === "number" ? Math.max(100, u.isa) : 100,
     games_played: typeof u.games_played === "number" ? u.games_played : 0,
     wins: typeof u.wins === "number" ? u.wins : 0,
     losses: typeof u.losses === "number" ? u.losses : 0,

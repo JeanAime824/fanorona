@@ -250,7 +250,7 @@ async function startServer() {
           email: `${lowerUsername}@fanorona.local`,
           password_hash: "",
           player_id: playerId,
-          isa: 1200,
+          isa: 100, // Initial Isa Floor
           games_played: 0,
           wins: 0,
           losses: 0,
@@ -338,7 +338,7 @@ async function startServer() {
         email: lowerEmail,
         password_hash: passwordHash,
         player_id: playerId,
-        isa: 1200, // Initial Isa Rating
+        isa: 100, // Initial Isa Rating Floor
         games_played: 0,
         wins: 0,
         losses: 0,
@@ -359,10 +359,10 @@ async function startServer() {
         {
           id: `rh_${userId}_init`,
           user_id: userId,
-          old_rating: 1200,
-          new_rating: 1200,
+          old_rating: 100,
+          new_rating: 100,
           rating_change: 0,
-          reason: "Attribution initiale de l'Isa",
+          reason: "Attribution initiale de l'Isa (100 min)",
           created_at: newUser.created_at,
         },
       ]);
@@ -497,7 +497,7 @@ async function startServer() {
           email: lowerEmail,
           password_hash: "",
           player_id: playerId,
-          isa: 1200,
+          isa: 100, // Initial Isa Rating Floor
           games_played: 0,
           wins: 0,
           losses: 0,
@@ -518,10 +518,10 @@ async function startServer() {
           {
             id: `rh_${userId}_init`,
             user_id: userId,
-            old_rating: 1200,
-            new_rating: 1200,
+            old_rating: 100,
+            new_rating: 100,
             rating_change: 0,
-            reason: "Attribution initiale de l'Isa (Google Sign-In)",
+            reason: "Attribution initiale de l'Isa (100 min)",
             created_at: user.created_at,
           },
         ]);
@@ -531,6 +531,10 @@ async function startServer() {
         if (photoURL && !user.avatar_url) {
           user.avatar_url = photoURL;
         }
+        // Ensure registered in user maps
+        users.set(user.id, user);
+        usersByPlayerId.set(user.player_id, user);
+        usersByUsername.set(user.username.toLowerCase(), user);
       }
 
       const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, {
@@ -652,13 +656,17 @@ async function startServer() {
       matches.push(buildSearchResult(exactIdUser, currentUserId));
     }
 
-    // 2. Partial match on username or player_id
+    // 2. Partial match on username, player_id, or email
     for (const u of users.values()) {
       if (u.id === currentUserId || (exactIdUser && u.id === exactIdUser.id)) continue;
-      if (u.username.toLowerCase().includes(lowerQuery) || u.player_id.includes(upperQuery)) {
+      if (
+        u.username.toLowerCase().includes(lowerQuery) ||
+        u.player_id.includes(upperQuery) ||
+        u.email.toLowerCase().includes(lowerQuery)
+      ) {
         matches.push(buildSearchResult(u, currentUserId));
       }
-      if (matches.length >= 15) break;
+      if (matches.length >= 20) break;
     }
 
     res.json(matches);
