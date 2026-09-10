@@ -629,10 +629,6 @@ async function startServer() {
 
   app.get(["/api/users/search", "/api/users/search/"], optionalJwt, (req: Request, res: Response) => {
     const q = ((req.query.q as string) || "").trim();
-    if (!q) {
-      return res.json([]);
-    }
-
     const currentUser = (req as any).user as UserDbRecord | undefined;
     const currentUserId = currentUser?.id;
     const upperQuery = q.toUpperCase();
@@ -640,19 +636,29 @@ async function startServer() {
 
     const matches: any[] = [];
 
+    if (!q) {
+      // Return all active registered players when query is empty
+      for (const u of users.values()) {
+        if (u.id === currentUserId) continue;
+        matches.push(buildSearchResult(u, currentUserId));
+        if (matches.length >= 20) break;
+      }
+      return res.json(matches);
+    }
+
     // 1. Direct match on 6-character player_id (highest priority)
     const exactIdUser = usersByPlayerId.get(upperQuery);
     if (exactIdUser && exactIdUser.id !== currentUserId) {
       matches.push(buildSearchResult(exactIdUser, currentUserId));
     }
 
-    // 2. Partial match on username
+    // 2. Partial match on username or player_id
     for (const u of users.values()) {
       if (u.id === currentUserId || (exactIdUser && u.id === exactIdUser.id)) continue;
       if (u.username.toLowerCase().includes(lowerQuery) || u.player_id.includes(upperQuery)) {
         matches.push(buildSearchResult(u, currentUserId));
       }
-      if (matches.length >= 10) break;
+      if (matches.length >= 15) break;
     }
 
     res.json(matches);
