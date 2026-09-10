@@ -70,25 +70,25 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
     loadFriendsData();
   }, [user]);
 
-  // Handle player search
-  useEffect(() => {
-    if (!searchQuery.trim()) {
-      setSearchResults([]);
-      return;
+  // Load player search results (including all registered players on empty query)
+  const performSearch = async (query: string) => {
+    setIsSearching(true);
+    try {
+      const results = await api.searchUsers(query.trim());
+      setSearchResults(results);
+    } catch (err) {
+      console.warn("Search error:", err);
+    } finally {
+      setIsSearching(false);
     }
-    const timer = setTimeout(async () => {
-      setIsSearching(true);
-      try {
-        const results = await api.searchUsers(searchQuery.trim());
-        setSearchResults(results);
-      } catch (err) {
-        console.warn("Search error:", err);
-      } finally {
-        setIsSearching(false);
-      }
-    }, 250);
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      performSearch(searchQuery);
+    }, 200);
     return () => clearTimeout(timer);
-  }, [searchQuery]);
+  }, [searchQuery, activeTab]);
 
   const handleSendRequest = async (targetUserId: string, playerId?: string) => {
     try {
