@@ -1,12 +1,12 @@
 {
-  "projectId": "secure-trainer-l53bd",
-  "appId": "1:491037374526:web:0afefdd9949dad3908396f",
-  "apiKey": "AIzaSyBDt6qaVPUP7D19aYNxy2t6HzXpPCxr6fE",
-  "authDomain": "trainer-l53bd.firebaseapp.com",
-  "firestoreDatabaseId": "ai-studio-fanorona-43c6cf3f-660d-40e5-9918-d23059281f43",
-  "storageBucket": "secure-trainer-l53bd.firebasestorage.app",
-  "messagingSenderId": "491037374526",
-  "measurementId": "",
-  "oAuthClientId": "491037374526-vfmgsnl13ibfm03ncr7o9t1459p7jh0r.apps.googleusercontent.com",
+  "projectId": "lalao-fanorona",
+  "appId": "1:326059790836:web:2cb6a25c2e11e07657e9a1",
+  "apiKey": "AIzaSyAU0uHuIlvDdWNN0v4Te-qUSSdMr9YMajI",
+  "authDomain": "lalao-fanorona.firebaseapp.com",
+  "firestoreDatabaseId": "(default)",
+  "storageBucket": "lalao-fanorona.firebasestorage.app",
+  "messagingSenderId": "326059790836",
+  "measurementId": "G-9YKSSSSN4G",
+  "oAuthClientId": "",
   "recaptchaSiteKey": ""
 }
