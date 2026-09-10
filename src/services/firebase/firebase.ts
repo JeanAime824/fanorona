@@ -15,7 +15,20 @@ import {
   getDocFromServer,
   getFirestore,
 } from "firebase/firestore";
-import firebaseConfig from "../../../firebase-applet-config.json";
+import jsonConfig from "../../../firebase-applet-config.json";
+
+// Construct active configuration dynamically (Env Vars take priority over JSON config)
+const env = (import.meta as any).env || {};
+
+export const firebaseConfig = {
+  apiKey: env.VITE_FIREBASE_API_KEY || jsonConfig.apiKey,
+  authDomain: env.VITE_FIREBASE_AUTH_DOMAIN || jsonConfig.authDomain,
+  projectId: env.VITE_FIREBASE_PROJECT_ID || jsonConfig.projectId,
+  storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || jsonConfig.storageBucket,
+  messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || jsonConfig.messagingSenderId,
+  appId: env.VITE_FIREBASE_APP_ID || jsonConfig.appId,
+  firestoreDatabaseId: jsonConfig.firestoreDatabaseId,
+};
 
 // Initialize Firebase App
 export const app = initializeApp(firebaseConfig);
