@@ -204,7 +204,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
             Mes Amis & Adversaires
           </h1>
           <p className="text-xs text-[#9E9890]">
-            Ajoutez des joueurs par leur ID unique (ex: <code className="text-[#C8A452] font-mono">F7K2M9</code>) et affrontez-les.
+            Ajoutez des joueurs et affrontez-les.
           </p>
         </div>
 
@@ -496,7 +496,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
           </div>
 
           <div className="text-[11px] text-[#9E9890]">
-            💡 <strong className="text-[#F5F3EE]">Conseil :</strong> La recherche par code ID à 6 chiffres (ex: <span className="font-mono text-[#C8A452]">982401</span>) affiche directement le joueur exact.
+            💡 <strong className="text-[#F5F3EE]">Conseil :</strong> Recherchez vos amis par leur nom d'utilisateur, adresse email ou identifiant joueur à 6 chiffres pour les défier instantanément.
           </div>
 
           {/* Results */}
