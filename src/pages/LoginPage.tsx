@@ -57,9 +57,12 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onNavigate }) => {
 
         {/* Error Alert */}
         {error && (
-          <div className="p-3 bg-[#A8432E]/15 border border-[#A8432E]/40 rounded-xl flex items-start gap-2.5 text-xs text-[#F1E8D5] text-left relative z-10">
-            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5 text-[#C45A3C]" />
-            <span>{error}</span>
+          <div className="p-4 bg-[#A8432E]/20 border border-[#A8432E]/50 rounded-xl flex items-start gap-3 text-xs text-[#F1E8D5] text-left relative z-10 shadow-lg">
+            <AlertCircle className="w-5 h-5 shrink-0 mt-0.5 text-[#C45A3C]" />
+            <div className="space-y-1">
+              <span className="font-semibold block text-[#F1E8D5]">Erreur de connexion :</span>
+              <p className="leading-relaxed opacity-90">{error}</p>
+            </div>
           </div>
         )}
 

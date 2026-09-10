@@ -194,6 +194,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (err?.code === "auth/cancelled-popup-request") {
         return;
       }
+      if (err?.code === "auth/unauthorized-domain" || err?.message?.includes("auth/unauthorized-domain")) {
+        const currentDomain = window.location.hostname;
+        throw new Error(
+          `Domaine non autorisé dans Firebase Auth (${currentDomain}). Veuillez ajouter "${currentDomain}" dans la console Firebase -> Authentication -> Paramètres -> Domaines autorisés.`
+        );
+      }
       throw new Error(err?.message || "Impossible de se connecter avec Google. Veuillez réessayer.");
     }
   };
