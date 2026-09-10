@@ -6,6 +6,8 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from "react";
+import { signInWithPopup } from "firebase/auth";
+import { auth, googleProvider } from "../services/firebase/firebase";
 import { GameSettings, GameStats } from "../game/types/gameTypes";
 import { UserProfile } from "../game/types/userTypes";
 import { api } from "../services/api";
@@ -165,8 +167,35 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async () => {
-    // Graceful Google fallback to quick register/login
-    await signInWithUsername(`Joueur_${Math.floor(1000 + Math.random() * 9000)}`);
+    try {
+      const result = await signInWithPopup(auth, googleProvider);
+      const firebaseUser = result.user;
+      if (!firebaseUser || !firebaseUser.email) {
+        throw new Error("Adresse email introuvable dans le compte Google.");
+      }
+
+      const res = await api.loginWithGoogle({
+        uid: firebaseUser.uid,
+        email: firebaseUser.email,
+        displayName: firebaseUser.displayName || undefined,
+        photoURL: firebaseUser.photoURL || undefined,
+      });
+
+      if (res.user) {
+        const norm = normalizeUser(res.user);
+        setUser(norm);
+        localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+      }
+    } catch (err: any) {
+      console.error("[Google Sign-In Error]", err);
+      if (err?.code === "auth/popup-closed-by-user") {
+        throw new Error("Connexion annulée par l'utilisateur.");
+      }
+      if (err?.code === "auth/cancelled-popup-request") {
+        return;
+      }
+      throw new Error(err?.message || "Impossible de se connecter avec Google. Veuillez réessayer.");
+    }
   };
 
   const signInAsGuest = async () => {

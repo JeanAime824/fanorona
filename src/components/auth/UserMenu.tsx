@@ -75,14 +75,6 @@ export const UserMenu: React.FC<UserMenuProps> = ({ onNavigate }) => {
           <span>Connexion</span>
         </button>
 
-        <button
-          type="button"
-          onClick={() => handleNavigateTo("inscription")}
-          className="hidden sm:flex px-2.5 py-1.5 rounded-xl text-xs font-medium tracking-wide bg-white/[0.04] hover:bg-white/[0.08] text-[#F5F3EE] border border-white/[0.08] transition-all items-center gap-1.5 cursor-pointer"
-        >
-          <UserPlus className="w-3.5 h-3.5 text-[#C8A452]" />
-          <span>Créer compte</span>
-        </button>
       </div>
     );
   }

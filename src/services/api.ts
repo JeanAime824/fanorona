@@ -163,6 +163,33 @@ export const api = {
     };
   },
 
+  async loginWithGoogle(data: { uid: string; email: string; displayName?: string; photoURL?: string }) {
+    let res: Response;
+    try {
+      res = await resilientFetch(`${API_BASE_URL}/api/auth/google`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(data),
+      });
+    } catch {
+      throw new Error("Impossible de joindre le serveur. Vérifiez votre connexion internet.");
+    }
+
+    const rawJson = await safeFetchJson<any>(res, "Erreur d'authentification Google");
+    const normalizedUser = normalizeUserPayload(rawJson, data.displayName || "Joueur", data.email);
+    const token = rawJson.token || `token_${normalizedUser.id}`;
+
+    localStorage.setItem("fanorona_jwt_token", token);
+    localStorage.setItem("fanorona_refresh_token", rawJson.refresh || token);
+
+    return {
+      message: rawJson.message || "Connexion Google réussie !",
+      token,
+      refresh: rawJson.refresh || token,
+      user: normalizedUser,
+    };
+  },
+
   async login(data: { username?: string; email?: string; password?: string }) {
     let res: Response;
     try {
