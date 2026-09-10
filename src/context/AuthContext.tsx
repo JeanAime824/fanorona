@@ -6,7 +6,7 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { signInWithPopup } from "firebase/auth";
+import { signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
 import { auth, googleProvider } from "../services/firebase/firebase";
 import { GameSettings, GameStats } from "../game/types/gameTypes";
 import { UserProfile } from "../game/types/userTypes";
@@ -86,6 +86,29 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, [user]);
+
+  // Process Google Sign-In Redirect Result on mount
+  useEffect(() => {
+    getRedirectResult(auth)
+      .then(async (result) => {
+        if (result && result.user && result.user.email) {
+          const res = await api.loginWithGoogle({
+            uid: result.user.uid,
+            email: result.user.email,
+            displayName: result.user.displayName || undefined,
+            photoURL: result.user.photoURL || undefined,
+          });
+          if (res.user) {
+            const norm = normalizeUser(res.user);
+            setUser(norm);
+            localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+          }
+        }
+      })
+      .catch((err) => {
+        console.warn("Redirect result error:", err);
+      });
+  }, []);
 
   // Load user session on mount
   const refreshProfile = async () => {
@@ -168,23 +191,36 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const signInWithGoogle = async () => {
     try {
-      const result = await signInWithPopup(auth, googleProvider);
-      const firebaseUser = result.user;
-      if (!firebaseUser || !firebaseUser.email) {
-        throw new Error("Adresse email introuvable dans le compte Google.");
-      }
+      try {
+        const result = await signInWithPopup(auth, googleProvider);
+        const firebaseUser = result.user;
+        if (!firebaseUser || !firebaseUser.email) {
+          throw new Error("Adresse email introuvable dans le compte Google.");
+        }
 
-      const res = await api.loginWithGoogle({
-        uid: firebaseUser.uid,
-        email: firebaseUser.email,
-        displayName: firebaseUser.displayName || undefined,
-        photoURL: firebaseUser.photoURL || undefined,
-      });
+        const res = await api.loginWithGoogle({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName || undefined,
+          photoURL: firebaseUser.photoURL || undefined,
+        });
 
-      if (res.user) {
-        const norm = normalizeUser(res.user);
-        setUser(norm);
-        localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+        if (res.user) {
+          const norm = normalizeUser(res.user);
+          setUser(norm);
+          localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+        }
+      } catch (popupErr: any) {
+        // If popup is blocked by third-party cookie/storage partitioning or browser security, fallback automatically to redirect
+        if (
+          popupErr?.code === "auth/popup-blocked" ||
+          popupErr?.code === "auth/internal-error" ||
+          popupErr?.message?.includes("partition")
+        ) {
+          await signInWithRedirect(auth, googleProvider);
+          return;
+        }
+        throw popupErr;
       }
     } catch (err: any) {
       console.error("[Google Sign-In Error]", err);
