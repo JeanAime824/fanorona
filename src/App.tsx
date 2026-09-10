@@ -142,7 +142,7 @@ function AppContent() {
           />
         )}
         {currentTab === "connexion" && <LoginPage onNavigate={handleNavigate} />}
-        {currentTab === "inscription" && <RegisterPage onNavigate={handleNavigate} />}
+        {currentTab === "inscription" && <LoginPage onNavigate={handleNavigate} />}
         {currentTab === "rules" && <RulesPage />}
         {currentTab === "history" && <HistoryPage />}
         {currentTab === "settings" && (

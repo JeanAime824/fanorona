@@ -25,6 +25,7 @@ function generate6CharPlayerId(existingIds: Set<string>): string {
 
 interface UserDbRecord {
   id: string;
+  firebase_uid?: string;
   username: string;
   email: string;
   password_hash: string;
@@ -444,6 +445,112 @@ async function startServer() {
 
   app.post("/api/auth/login/", handleLogin);
   app.post("/api/auth/login", handleLogin);
+
+  // Google Firebase Authentication
+  const handleGoogleAuth = async (req: Request, res: Response) => {
+    try {
+      const { uid, email, displayName, photoURL } = req.body;
+
+      if (!uid || !email) {
+        return res.status(400).json({ error: "Jeton Google/Firebase invalide ou informations manquantes." });
+      }
+
+      const lowerEmail = email.trim().toLowerCase();
+      let user: UserDbRecord | undefined;
+
+      // 1. Search by Firebase UID
+      for (const u of users.values()) {
+        if (u.firebase_uid === uid) {
+          user = u;
+          break;
+        }
+      }
+
+      // 2. If not found by UID, search by email (migration/linking)
+      if (!user) {
+        for (const u of users.values()) {
+          if (u.email.toLowerCase() === lowerEmail) {
+            user = u;
+            user.firebase_uid = uid; // Link Google UID to existing account
+            break;
+          }
+        }
+      }
+
+      // 3. If still not found, create new account automatically
+      if (!user) {
+        const allPlayerIds = new Set(usersByPlayerId.keys());
+        const playerId = generate6CharPlayerId(allPlayerIds);
+        const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const cleanName = (displayName && displayName.trim()) || `Joueur_${playerId}`;
+        let lowerUsername = cleanName.toLowerCase();
+
+        // Ensure username uniqueness
+        if (usersByUsername.has(lowerUsername)) {
+          lowerUsername = `${lowerUsername}_${playerId.substring(0, 3)}`.toLowerCase();
+        }
+
+        user = {
+          id: userId,
+          firebase_uid: uid,
+          username: cleanName,
+          email: lowerEmail,
+          password_hash: "",
+          player_id: playerId,
+          isa: 1200,
+          games_played: 0,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          avatar_url: photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${cleanName}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_activity: new Date().toISOString(),
+          status: "ONLINE",
+        };
+
+        users.set(userId, user);
+        usersByPlayerId.set(playerId, user);
+        usersByUsername.set(user.username.toLowerCase(), user);
+
+        // Record initial Isa rating history
+        ratingHistories.set(userId, [
+          {
+            id: `rh_${userId}_init`,
+            user_id: userId,
+            old_rating: 1200,
+            new_rating: 1200,
+            rating_change: 0,
+            reason: "Attribution initiale de l'Isa (Google Sign-In)",
+            created_at: user.created_at,
+          },
+        ]);
+      } else {
+        user.last_activity = new Date().toISOString();
+        user.status = "ONLINE";
+        if (photoURL && !user.avatar_url) {
+          user.avatar_url = photoURL;
+        }
+      }
+
+      const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, {
+        expiresIn: JWT_EXPIRES_IN,
+      });
+
+      return res.json({
+        message: "Connexion Google réussie !",
+        token,
+        refresh: token,
+        user: toPublicProfile(user),
+      });
+    } catch (err: any) {
+      console.error("[Google Auth Error]", err);
+      return res.status(500).json({ error: "Erreur lors de l'authentification avec Google." });
+    }
+  };
+
+  app.post("/api/auth/google/", handleGoogleAuth);
+  app.post("/api/auth/google", handleGoogleAuth);
 
   // Refresh Session
   const handleRefresh = (req: Request, res: Response) => {
