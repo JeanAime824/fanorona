@@ -455,7 +455,12 @@ async function startServer() {
       let userId: string = "";
       let username: string = "";
 
-      if (token.startsWith("gst_token_") || token.startsWith("token_") || token.startsWith("gst_")) {
+      if (
+        token.startsWith("gst_token_") ||
+        token.startsWith("token_") ||
+        token.startsWith("gst_") ||
+        token.startsWith("usr_")
+      ) {
         userId = token.replace(/^(gst_token_|token_)/, "");
         username = userId.startsWith("gst_") ? "Invité" : "Joueur";
       } else {
@@ -467,6 +472,10 @@ async function startServer() {
           userId = token;
           username = "Joueur";
         }
+      }
+
+      if (!userId) {
+        return res.status(401).json({ error: "Jeton invalide." });
       }
 
       const user = ensureUserRecord(userId, { username });
@@ -707,7 +716,7 @@ async function startServer() {
       if (!user) {
         const allPlayerIds = new Set(usersByPlayerId.keys());
         const playerId = generate6CharPlayerId(allPlayerIds);
-        const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
+        const userId = `usr_${uid}`;
         const cleanName = (displayName && displayName.trim()) || `Joueur_${playerId}`;
         let lowerUsername = cleanName.toLowerCase();
 
@@ -763,6 +772,7 @@ async function startServer() {
         usersByUsername.set(user.username.toLowerCase(), user);
       }
 
+      saveToDisk();
       persistDb();
 
       const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, {

@@ -304,6 +304,9 @@ export const api = {
 
   // Users & Search
   async searchUsers(query: string): Promise<UserSearchResult[]> {
+    const combinedMap = new Map<string, UserSearchResult>();
+
+    // 1. Fetch search results from Express REST API
     try {
       const res = await resilientFetch(
         `${API_BASE_URL}/api/users/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`,
@@ -314,26 +317,35 @@ export const api = {
       );
       if (res.ok) {
         const results = await safeFetchJson<UserSearchResult[]>(res);
-        if (Array.isArray(results) && results.length > 0) {
-          return results;
+        if (Array.isArray(results)) {
+          for (const u of results) {
+            combinedMap.set(u.id, u);
+          }
         }
       }
     } catch {
-      // Backend error or unreachable, proceed to Firestore fallback
+      // Ignore backend fetch errors
     }
 
-    // Firestore fallback for search across all clients (especially on Vercel)
+    // 2. Fetch search results from Cloud Firestore (universal database)
     try {
       const { searchFirestoreUsers } = await import("./firebase/syncService");
       const firestoreUsers = await searchFirestoreUsers(query);
-      if (Array.isArray(firestoreUsers) && firestoreUsers.length > 0) {
-        return firestoreUsers;
+      if (Array.isArray(firestoreUsers)) {
+        for (const u of firestoreUsers) {
+          if (!combinedMap.has(u.id)) {
+            combinedMap.set(u.id, u);
+          } else {
+            const existing = combinedMap.get(u.id)!;
+            combinedMap.set(u.id, { ...existing, ...u });
+          }
+        }
       }
     } catch (err) {
-      console.warn("[searchUsers] Firestore search fallback error:", err);
+      console.warn("[searchUsers] Firestore search error:", err);
     }
 
-    return [];
+    return Array.from(combinedMap.values());
   },
 
   async getCommunityUsers(): Promise<UserSearchResult[]> {
