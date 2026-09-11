@@ -91,21 +91,28 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
     // Synchronize to REST Backend Server so user is registered in memory and visible in search
     api.syncUser(norm).catch((err) => console.warn("Backend sync warning:", err));
-    // Synchronize to Cloud Firestore so all players are visible across browsers and devices
-    syncUserProfile(
-      norm.id,
-      norm.email,
-      norm.username,
-      norm.avatar_url,
-      norm.player_id,
-      {
-        isa: norm.isa,
-        gamesPlayed: norm.games_played,
-        winRate: norm.win_rate,
-        username: norm.username,
-        status: "ONLINE",
-      }
-    ).catch((err) => console.warn("Firestore sync warning:", err));
+    // Synchronize to Cloud Firestore so all players are visible across browsers and devices.
+    // IMPORTANT: firestore.rules only allows writing users/{userId} when
+    // request.auth.uid === userId (isOwner check). The backend's user id (norm.id) is
+    // prefixed ("usr_<firebase_uid>") and will NEVER match request.auth.uid, so every
+    // write would be silently rejected. Only sync when there is an active Firebase Auth
+    // session (currently: Google sign-in) and use the real Firebase uid as the doc id.
+    if (auth.currentUser) {
+      syncUserProfile(
+        auth.currentUser.uid,
+        norm.email,
+        norm.username,
+        norm.avatar_url,
+        norm.player_id,
+        {
+          isa: norm.isa,
+          gamesPlayed: norm.games_played,
+          winRate: norm.win_rate,
+          username: norm.username,
+          status: "ONLINE",
+        }
+      ).catch((err) => console.warn("Firestore sync warning:", err));
+    }
   };
 
   // Process Google Sign-In Redirect Result on mount
