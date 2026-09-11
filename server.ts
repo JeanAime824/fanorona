@@ -366,46 +366,67 @@ async function startServer() {
   const userSockets = new Map<string, string>(); // userId -> socketId
   const socketUsers = new Map<string, string>(); // socketId -> userId
 
-  // Auto-registers or restores user record in memory database
+  // Auto-registers or restores user record in memory database strictly by userId
   function ensureUserRecord(
     userId: string,
     options?: { username?: string; email?: string; player_id?: string; avatar_url?: string; isa?: number }
   ): UserDbRecord {
     let user = users.get(userId);
-    if (!user && options?.player_id) {
-      user = usersByPlayerId.get(options.player_id.toUpperCase());
-    }
 
     if (user) {
-      if (options?.username && options.username !== user.username) {
-        const lower = options.username.toLowerCase();
-        if (!usersByUsername.has(lower) || usersByUsername.get(lower)?.id === userId) {
+      let changed = false;
+      if (options?.username && options.username.trim()) {
+        const cleanUname = options.username.trim();
+        const lower = cleanUname.toLowerCase();
+        const existingByName = usersByUsername.get(lower);
+        if (!existingByName || existingByName.id === userId) {
           usersByUsername.delete(user.username.toLowerCase());
-          user.username = options.username;
+          user.username = cleanUname;
           usersByUsername.set(lower, user);
+          changed = true;
         }
       }
-      if (options?.player_id && options.player_id.toUpperCase() !== user.player_id) {
-        const cleanPid = options.player_id.toUpperCase();
-        if (!usersByPlayerId.has(cleanPid) || usersByPlayerId.get(cleanPid)?.id === userId) {
-          usersByPlayerId.delete(user.player_id);
-          user.player_id = cleanPid;
-          usersByPlayerId.set(cleanPid, user);
+      if (options?.player_id && options.player_id.trim()) {
+        const cleanPid = options.player_id.trim().toUpperCase();
+        if (cleanPid !== user.player_id) {
+          const existingByPid = usersByPlayerId.get(cleanPid);
+          if (!existingByPid || existingByPid.id === userId) {
+            usersByPlayerId.delete(user.player_id);
+            user.player_id = cleanPid;
+            usersByPlayerId.set(cleanPid, user);
+            changed = true;
+          }
         }
       }
       if (options?.avatar_url && options.avatar_url !== user.avatar_url) {
         user.avatar_url = options.avatar_url;
+        changed = true;
       }
       if (options?.email && options.email !== user.email) {
         user.email = options.email;
+        changed = true;
       }
       user.last_activity = new Date().toISOString();
-      saveToDisk();
+      if (changed) {
+        saveToDisk();
+      }
       return user;
     }
 
-    const allPlayerIds = new Set(usersByPlayerId.keys());
-    const pid = options?.player_id?.trim() ? options.player_id.trim().toUpperCase() : generate6CharPlayerId(allPlayerIds);
+    // New user creation
+    const requestedPid = options?.player_id?.trim().toUpperCase();
+    let pid = "";
+    if (requestedPid) {
+      const existingByPid = usersByPlayerId.get(requestedPid);
+      if (!existingByPid || existingByPid.id === userId) {
+        pid = requestedPid;
+      }
+    }
+    if (!pid) {
+      const allPlayerIds = new Set(usersByPlayerId.keys());
+      pid = generate6CharPlayerId(allPlayerIds);
+    }
+
     const uname = options?.username?.trim() || `Joueur_${pid.substring(0, 4)}`;
     const lowerName = uname.toLowerCase();
     const uemail = options?.email?.trim() || `${lowerName.replace(/[^a-z0-9]/g, "")}@fanorona.local`;
@@ -436,6 +457,29 @@ async function startServer() {
     return newUser;
   }
 
+  // Cryptographically verifies token or safely inspects claims
+  function extractUserIdFromToken(token: string | undefined | null): string {
+    if (!token) return "";
+    let clean = token.trim();
+    if (clean.startsWith("Bearer ")) clean = clean.substring(7).trim();
+    if (!clean) return "";
+
+    // 1. Check guest tokens or local tokens with explicit known prefix
+    if (clean.startsWith("gst_token_")) return clean.replace("gst_token_", "");
+    if (clean.startsWith("gst_")) return clean.replace("gst_", "");
+    if (clean.startsWith("token_usr_")) return clean.replace("token_", "");
+
+    // 2. Cryptographically verify signed server JWT using JWT_SECRET
+    try {
+      const decoded = jwt.verify(clean, JWT_SECRET) as { userId: string };
+      if (decoded && decoded.userId) return decoded.userId;
+    } catch {
+      // Invalid or expired token signature -> return empty string
+    }
+
+    return "";
+  }
+
   // JWT Middleware helper with auto-restoration for server restarts & guest support
   const authenticateJwt = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
@@ -447,44 +491,14 @@ async function startServer() {
       token = (req.query.token as string) || (req.body && req.body.token) || "";
     }
 
-    if (!token) {
-      return res.status(401).json({ error: "Authentification requise. Token manquant." });
+    const userId = extractUserIdFromToken(token);
+
+    if (!userId) {
+      return res.status(401).json({ error: "Authentification requise. Token manquant ou invalide." });
     }
 
     try {
-      let userId: string = "";
-      let username: string = "";
-
-      if (token.startsWith("gst_token_") || token.startsWith("gst_")) {
-        userId = token.replace(/^gst_token_/, "");
-        username = "Invité";
-      } else if (token.startsWith("token_")) {
-        userId = token.replace(/^token_/, "");
-        username = "Joueur";
-      } else {
-        try {
-          const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
-          userId = decoded.userId;
-          username = decoded.username || "Joueur";
-        } catch {
-          // Attempt decoding token (e.g. Firebase ID token or client session token)
-          const decodedRaw = jwt.decode(token) as any;
-          if (decodedRaw && (decodedRaw.userId || decodedRaw.uid || decodedRaw.sub)) {
-            const rawUid = decodedRaw.userId || decodedRaw.uid || decodedRaw.sub;
-            userId = rawUid.startsWith("usr_") ? rawUid : `usr_${rawUid}`;
-            username = decodedRaw.username || decodedRaw.name || decodedRaw.email?.split("@")[0] || "Joueur";
-          } else if (token.startsWith("usr_") && token.length < 100) {
-            userId = token;
-            username = "Joueur";
-          }
-        }
-      }
-
-      if (!userId) {
-        return res.status(401).json({ error: "Jeton invalide." });
-      }
-
-      const user = ensureUserRecord(userId, { username });
+      const user = ensureUserRecord(userId);
       (req as any).user = user;
       next();
     } catch (err) {
@@ -503,27 +517,11 @@ async function startServer() {
       token = (req.query.token as string) || (req.body && req.body.token) || "";
     }
 
-    if (token) {
+    const userId = extractUserIdFromToken(token);
+    if (userId) {
       try {
-        let userId = "";
-        let username = "";
-        if (token.startsWith("gst_token_") || token.startsWith("token_") || token.startsWith("gst_")) {
-          userId = token.replace(/^(gst_token_|token_)/, "");
-          username = userId.startsWith("gst_") ? "Invité" : "Joueur";
-        } else {
-          try {
-            const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
-            userId = decoded.userId;
-            username = decoded.username || "Joueur";
-          } catch {
-            userId = token;
-            username = "Joueur";
-          }
-        }
-        if (userId) {
-          const user = ensureUserRecord(userId, { username });
-          (req as any).user = user;
-        }
+        const user = ensureUserRecord(userId);
+        (req as any).user = user;
       } catch {
         // Continue unauthenticated
       }
@@ -1885,27 +1883,12 @@ async function startServer() {
   io.on("connection", (socket: Socket) => {
     // Authenticate socket user
     socket.on("authenticate", ({ token, userId, user: userInfo }) => {
-      let uid = "";
-      if (token) {
-        if (token.startsWith("gst_token_") || token.startsWith("gst_")) {
-          uid = token.replace(/^gst_token_/, "");
-        } else if (token.startsWith("token_usr_")) {
-          uid = token.replace(/^token_/, "");
-        } else {
-          try {
-            const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-            uid = decoded.userId;
-          } catch {
-            if (token.startsWith("usr_")) {
-              uid = token;
-            } else {
-              uid = userId || userInfo?.id || "";
-            }
-          }
-        }
-      } else {
-        uid = userId || userInfo?.id || "";
-      }
+      const uid =
+        extractUserIdFromToken(token) ||
+        (typeof userId === "string" && userId.startsWith("usr_") ? userId : "") ||
+        (typeof userInfo?.id === "string" && userInfo.id.startsWith("usr_") ? userInfo.id : "") ||
+        (typeof userId === "string" && userId ? userId : "") ||
+        (typeof userInfo?.id === "string" && userInfo.id ? userInfo.id : "");
 
       if (uid) {
         userSockets.set(uid, socket.id);
