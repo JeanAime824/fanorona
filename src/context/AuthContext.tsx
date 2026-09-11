@@ -285,8 +285,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const guestToken = `gst_token_${guestUser.id}`;
     localStorage.setItem("fanorona_jwt_token", guestToken);
     localStorage.setItem("fanorona_refresh_token", guestToken);
-    localStorage.setItem("fanorona_custom_user", JSON.stringify(guestUser));
-    setUser(guestUser);
+    applyUser(guestUser);
   };
 
   const logout = async () => {

@@ -378,17 +378,29 @@ async function startServer() {
 
     if (user) {
       if (options?.username && options.username !== user.username) {
-        usersByUsername.delete(user.username.toLowerCase());
-        user.username = options.username;
-        usersByUsername.set(options.username.toLowerCase(), user);
+        const lower = options.username.toLowerCase();
+        if (!usersByUsername.has(lower) || usersByUsername.get(lower)?.id === userId) {
+          usersByUsername.delete(user.username.toLowerCase());
+          user.username = options.username;
+          usersByUsername.set(lower, user);
+        }
+      }
+      if (options?.player_id && options.player_id.toUpperCase() !== user.player_id) {
+        const cleanPid = options.player_id.toUpperCase();
+        if (!usersByPlayerId.has(cleanPid) || usersByPlayerId.get(cleanPid)?.id === userId) {
+          usersByPlayerId.delete(user.player_id);
+          user.player_id = cleanPid;
+          usersByPlayerId.set(cleanPid, user);
+        }
       }
       if (options?.avatar_url && options.avatar_url !== user.avatar_url) {
         user.avatar_url = options.avatar_url;
       }
-      if (typeof options?.isa === "number" && options.isa > user.isa) {
-        user.isa = options.isa;
+      if (options?.email && options.email !== user.email) {
+        user.email = options.email;
       }
       user.last_activity = new Date().toISOString();
+      saveToDisk();
       return user;
     }
 
@@ -1817,18 +1829,15 @@ async function startServer() {
   });
 
   // User Profile Sync Endpoint (for client-side or guest authentication)
-  app.post(["/api/users/sync", "/api/users/sync/"], optionalJwt, (req: Request, res: Response) => {
-    const { id, username, email, player_id, avatar_url, isa } = req.body;
-    const userId = id || (req as any).user?.id;
-    if (!userId) {
-      return res.status(400).json({ error: "Identifiant utilisateur requis pour la synchronisation." });
-    }
-    const syncedUser = ensureUserRecord(userId, {
+  app.post(["/api/users/sync", "/api/users/sync/"], authenticateJwt, (req: Request, res: Response) => {
+    const currentUser = (req as any).user as UserDbRecord;
+    const { username, email, player_id, avatar_url } = req.body;
+
+    const syncedUser = ensureUserRecord(currentUser.id, {
       username,
       email,
       player_id,
       avatar_url,
-      isa,
     });
     res.json(toPublicProfile(syncedUser));
   });
@@ -1860,15 +1869,22 @@ async function startServer() {
   io.on("connection", (socket: Socket) => {
     // Authenticate socket user
     socket.on("authenticate", ({ token, userId, user: userInfo }) => {
-      let uid = userId || userInfo?.id || userInfo?.uid;
-      if (token && !uid) {
-        try {
-          const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-          uid = decoded.userId;
-        } catch {
-          // fallback
+      let uid = "";
+      if (token) {
+        if (token.startsWith("gst_token_") || token.startsWith("token_") || token.startsWith("gst_")) {
+          uid = token.replace(/^(gst_token_|token_)/, "");
+        } else {
+          try {
+            const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+            uid = decoded.userId;
+          } catch {
+            uid = userId || userInfo?.id || "";
+          }
         }
+      } else {
+        uid = userId || userInfo?.id || "";
       }
+
       if (uid) {
         userSockets.set(uid, socket.id);
         socketUsers.set(socket.id, uid);
@@ -1878,7 +1894,6 @@ async function startServer() {
           email: userInfo?.email,
           player_id: userInfo?.player_id,
           avatar_url: userInfo?.avatar_url || userInfo?.photoURL,
-          isa: userInfo?.isa,
         });
         u.status = "ONLINE";
         u.last_activity = new Date().toISOString();
