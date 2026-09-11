@@ -366,6 +366,64 @@ async function startServer() {
   const userSockets = new Map<string, string>(); // userId -> socketId
   const socketUsers = new Map<string, string>(); // socketId -> userId
 
+  // Auto-registers or restores user record in memory database
+  function ensureUserRecord(
+    userId: string,
+    options?: { username?: string; email?: string; player_id?: string; avatar_url?: string; isa?: number }
+  ): UserDbRecord {
+    let user = users.get(userId);
+    if (!user && options?.player_id) {
+      user = usersByPlayerId.get(options.player_id.toUpperCase());
+    }
+
+    if (user) {
+      if (options?.username && options.username !== user.username) {
+        usersByUsername.delete(user.username.toLowerCase());
+        user.username = options.username;
+        usersByUsername.set(options.username.toLowerCase(), user);
+      }
+      if (options?.avatar_url && options.avatar_url !== user.avatar_url) {
+        user.avatar_url = options.avatar_url;
+      }
+      if (typeof options?.isa === "number" && options.isa > user.isa) {
+        user.isa = options.isa;
+      }
+      user.last_activity = new Date().toISOString();
+      return user;
+    }
+
+    const allPlayerIds = new Set(usersByPlayerId.keys());
+    const pid = options?.player_id?.trim() ? options.player_id.trim().toUpperCase() : generate6CharPlayerId(allPlayerIds);
+    const uname = options?.username?.trim() || `Joueur_${pid.substring(0, 4)}`;
+    const lowerName = uname.toLowerCase();
+    const uemail = options?.email?.trim() || `${lowerName.replace(/[^a-z0-9]/g, "")}@fanorona.local`;
+
+    const newUser: UserDbRecord = {
+      id: userId,
+      username: uname,
+      email: uemail,
+      password_hash: "",
+      player_id: pid,
+      isa: typeof options?.isa === "number" ? Math.max(100, options.isa) : 100,
+      games_played: 0,
+      wins: 0,
+      losses: 0,
+      draws: 0,
+      avatar_url: options?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(uname)}`,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    };
+
+    users.set(userId, newUser);
+    usersByPlayerId.set(pid, newUser);
+    usersByUsername.set(lowerName, newUser);
+    saveToDisk();
+    persistDb();
+    return newUser;
+  }
+
   // JWT Middleware helper with auto-restoration for server restarts & guest support
   const authenticateJwt = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
@@ -399,35 +457,7 @@ async function startServer() {
         }
       }
 
-      let user = users.get(userId);
-      if (!user) {
-        // Auto-restore user in memory if missing (e.g. after server restart or fallback session)
-        const allPlayerIds = new Set(usersByPlayerId.keys());
-        const playerId = generate6CharPlayerId(allPlayerIds);
-        const lowerUsername = username.toLowerCase();
-        user = {
-          id: userId,
-          username: username || `Joueur_${playerId.substring(0, 4)}`,
-          email: `${lowerUsername}@fanorona.local`,
-          password_hash: "",
-          player_id: playerId,
-          isa: 100, // Initial Isa Floor
-          games_played: 0,
-          wins: 0,
-          losses: 0,
-          draws: 0,
-          avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${username || playerId}`,
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-          last_activity: new Date().toISOString(),
-          status: "ONLINE",
-        };
-        users.set(userId, user);
-        usersByPlayerId.set(playerId, user);
-        usersByUsername.set(lowerUsername, user);
-        persistDb();
-      }
-
+      const user = ensureUserRecord(userId, { username });
       (req as any).user = user;
       next();
     } catch (err) {
@@ -438,12 +468,33 @@ async function startServer() {
   // Optional authentication (for guests or viewing)
   const optionalJwt = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
+    let token = "";
     if (authHeader && authHeader.startsWith("Bearer ")) {
-      const token = authHeader.split(" ")[1];
+      token = authHeader.split(" ")[1];
+    }
+    if (!token) {
+      token = (req.query.token as string) || (req.body && req.body.token) || "";
+    }
+
+    if (token) {
       try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-        const user = users.get(decoded.userId);
-        if (user) {
+        let userId = "";
+        let username = "";
+        if (token.startsWith("gst_token_") || token.startsWith("token_") || token.startsWith("gst_")) {
+          userId = token.replace(/^(gst_token_|token_)/, "");
+          username = userId.startsWith("gst_") ? "Invité" : "Joueur";
+        } else {
+          try {
+            const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
+            userId = decoded.userId;
+            username = decoded.username || "Joueur";
+          } catch {
+            userId = token;
+            username = "Joueur";
+          }
+        }
+        if (userId) {
+          const user = ensureUserRecord(userId, { username });
           (req as any).user = user;
         }
       } catch {
@@ -1765,6 +1816,23 @@ async function startServer() {
     });
   });
 
+  // User Profile Sync Endpoint (for client-side or guest authentication)
+  app.post(["/api/users/sync", "/api/users/sync/"], optionalJwt, (req: Request, res: Response) => {
+    const { id, username, email, player_id, avatar_url, isa } = req.body;
+    const userId = id || (req as any).user?.id;
+    if (!userId) {
+      return res.status(400).json({ error: "Identifiant utilisateur requis pour la synchronisation." });
+    }
+    const syncedUser = ensureUserRecord(userId, {
+      username,
+      email,
+      player_id,
+      avatar_url,
+      isa,
+    });
+    res.json(toPublicProfile(syncedUser));
+  });
+
   // Catch-all fallback for any unknown API route: ALWAYS return JSON, never HTML
   app.all("/api/*", (req: Request, res: Response) => {
     res.status(404).json({ error: `Route API introuvable : ${req.method} ${req.path}` });
@@ -1791,9 +1859,9 @@ async function startServer() {
 
   io.on("connection", (socket: Socket) => {
     // Authenticate socket user
-    socket.on("authenticate", ({ token, userId }) => {
-      let uid = userId;
-      if (token) {
+    socket.on("authenticate", ({ token, userId, user: userInfo }) => {
+      let uid = userId || userInfo?.id || userInfo?.uid;
+      if (token && !uid) {
         try {
           const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
           uid = decoded.userId;
@@ -1805,12 +1873,16 @@ async function startServer() {
         userSockets.set(uid, socket.id);
         socketUsers.set(socket.id, uid);
 
-        const u = users.get(uid);
-        if (u) {
-          u.status = "ONLINE";
-          u.last_activity = new Date().toISOString();
-          io.emit("user_presence_changed", { userId: uid, status: "ONLINE" });
-        }
+        const u = ensureUserRecord(uid, {
+          username: userInfo?.username || userInfo?.displayName,
+          email: userInfo?.email,
+          player_id: userInfo?.player_id,
+          avatar_url: userInfo?.avatar_url || userInfo?.photoURL,
+          isa: userInfo?.isa,
+        });
+        u.status = "ONLINE";
+        u.last_activity = new Date().toISOString();
+        io.emit("user_presence_changed", { userId: uid, status: "ONLINE" });
       }
     });
 
