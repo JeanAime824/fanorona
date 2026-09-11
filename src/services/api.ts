@@ -277,6 +277,22 @@ export const api = {
     }
   },
 
+  async syncUser(user: UserProfile): Promise<UserProfile> {
+    try {
+      const res = await resilientFetch(`${API_BASE_URL}/api/users/sync`, {
+        method: "POST",
+        headers: getAuthHeaders(),
+        body: JSON.stringify(user),
+      });
+      if (res.ok) {
+        return await safeFetchJson<UserProfile>(res);
+      }
+    } catch (err) {
+      console.warn("[syncUser] Sync warning:", err);
+    }
+    return user;
+  },
+
   async updateProfile(data: { username?: string; avatar_url?: string }): Promise<UserProfile> {
     const res = await resilientFetch(`${API_BASE_URL}/api/profile/me`, {
       method: "PATCH",

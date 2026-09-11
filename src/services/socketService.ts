@@ -48,9 +48,9 @@ class SocketService {
     return this.socket;
   }
 
-  public authenticate(token?: string | null, userId?: string) {
+  public authenticate(token?: string | null, userId?: string, user?: any) {
     const socket = this.connect();
-    socket.emit("authenticate", { token, userId });
+    socket.emit("authenticate", { token, userId, user });
   }
 
   public onChallengeAccepted(callback: (data: { invite_id: string; game_id: string; opponent: any }) => void) {

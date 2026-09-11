@@ -79,7 +79,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       try {
         const token = localStorage.getItem("fanorona_jwt_token");
-        socketService.authenticate(token, user.id);
+        socketService.authenticate(token, user.id, user);
       } catch (err) {
         console.warn("Socket auth sync:", err);
       }
@@ -89,6 +89,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const applyUser = (norm: PlatformUser) => {
     setUser(norm);
     localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+    // Synchronize to REST Backend Server so user is registered in memory and visible in search
+    api.syncUser(norm).catch((err) => console.warn("Backend sync warning:", err));
     // Synchronize to Cloud Firestore so all players are visible across browsers and devices
     syncUserProfile(
       norm.id,
