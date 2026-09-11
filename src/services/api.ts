@@ -333,11 +333,29 @@ export const api = {
       const firestoreUsers = await searchFirestoreUsers(query);
       if (Array.isArray(firestoreUsers)) {
         for (const u of firestoreUsers) {
-          if (!combinedMap.has(u.id)) {
+          let existingKey: string | null = null;
+          for (const [k, existing] of combinedMap.entries()) {
+            if (
+              existing.id === u.id ||
+              (existing.player_id && u.player_id && existing.player_id.toUpperCase() === u.player_id.toUpperCase()) ||
+              (existing.email && u.email && existing.email.toLowerCase() === u.email.toLowerCase())
+            ) {
+              existingKey = k;
+              break;
+            }
+          }
+
+          if (!existingKey) {
             combinedMap.set(u.id, u);
           } else {
-            const existing = combinedMap.get(u.id)!;
-            combinedMap.set(u.id, { ...existing, ...u });
+            const existing = combinedMap.get(existingKey)!;
+            combinedMap.set(existingKey, {
+              ...existing,
+              ...u,
+              id: existing.id,
+              player_id: existing.player_id || u.player_id,
+              status: existing.status === "ONLINE" || existing.status === "IN_GAME" ? existing.status : u.status,
+            });
           }
         }
       }
