@@ -20,7 +20,8 @@ import { useFanoronaGame } from "../hooks/useFanoronaGame";
 import { useAuth } from "../context/AuthContext";
 import { useMultiplayer } from "../hooks/useMultiplayer";
 import { socketService } from "../services/socketService";
-import { AlertCircle, Wifi, WifiOff } from "lucide-react";
+import { api } from "../services/api";
+import { AlertCircle, Wifi, WifiOff, Copy, Check, Users, Sparkles } from "lucide-react";
 
 export const GamePage: React.FC = () => {
   const {
@@ -49,12 +50,24 @@ export const GamePage: React.FC = () => {
   const [multiState, multiActions] = useMultiplayer(user?.uid);
 
   const [isNewGameOpen, setIsNewGameOpen] = useState(false);
+  const [isMatchingBot, setIsMatchingBot] = useState(false);
+  const [copiedGameCode, setCopiedGameCode] = useState(false);
 
   useEffect(() => {
     const handleOpen = () => setIsNewGameOpen(true);
     const handleStartOnline = (e: any) => {
       if (e.detail?.gameId) {
-        startNewGame("multiplayer", "medium", "white", false, 300, e.detail.gameId);
+        startNewGame(
+          "multiplayer",
+          "medium",
+          e.detail.color === "black" ? "white" : "black",
+          false,
+          e.detail.timeLimit || 300,
+          e.detail.gameId,
+          e.detail.color || "white",
+          e.detail.opponent?.username || e.detail.opponentName,
+          e.detail.opponent?.isa || e.detail.opponentIsa
+        );
       }
     };
     window.addEventListener("open-new-game-modal", handleOpen);
@@ -203,7 +216,9 @@ export const GamePage: React.FC = () => {
             {gameState.gameMode === "ai" && gameState.aiPlayerColor === "black"
               ? "IA (Noir)"
               : gameState.gameMode === "multiplayer"
-                ? "Joueur Noir"
+                ? gameState.onlinePlayerColor === "black"
+                  ? `${user?.username || "Vous"} (Noir)`
+                  : `${gameState.opponentName || "Adversaire"} (Noir)`
                 : settings.playerNameBlack?.trim() || "Joueur Noir"}
           </span>
           {gameState.currentPlayer === "black" && gameState.status === "playing" && (
@@ -223,18 +238,72 @@ export const GamePage: React.FC = () => {
             {gameState.gameMode === "ai" && gameState.aiPlayerColor === "white"
               ? "IA (Blanc)"
               : gameState.gameMode === "multiplayer"
-                ? "Joueur Blanc"
+                ? gameState.onlinePlayerColor === "white"
+                  ? `${user?.username || "Vous"} (Blanc)`
+                  : `${gameState.opponentName || "Adversaire"} (Blanc)`
                 : settings.playerNameWhite?.trim() || "Joueur Blanc"}
           </span>
-          {!gameState.currentPlayer.startsWith("w") && gameState.status === "playing" && (
-            <span className="w-1.5 h-1.5 rounded-full bg-[#C8A452]" />
-          )}
         </div>
 
         <div className="text-[10px] font-mono tracking-widest text-[#6B655E] uppercase font-semibold hidden sm:block">
-          {gameState.turnNumber}
+          Tour {gameState.turnNumber}
         </div>
       </div>
+
+      {/* Online Waiting Room Banner if waiting for an opponent */}
+      {gameState.gameMode === "multiplayer" && (!gameState.opponentName || gameState.status === "waiting") && (
+        <div className="max-w-7xl mx-auto p-4 rounded-xl bg-gradient-to-r from-[#1E1B15] to-[#14120F] border border-[#C8A452]/30 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 shadow-lg">
+          <div className="space-y-1">
+            <div className="flex items-center gap-2 text-sm font-bold text-[#F5F3EE]">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-[#C8A452] opacity-75"></span>
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-[#C8A452]"></span>
+              </span>
+              <span>En attente d'un adversaire pour cette partie en ligne</span>
+            </div>
+            <p className="text-xs text-[#9E9890]">
+              Partagez le code de partie avec un ami ou jouez immédiatement avec un joueur en ligne de la communauté.
+            </p>
+          </div>
+
+          <div className="flex items-center gap-2 w-full sm:w-auto">
+            {gameState.multiplayerGameId && (
+              <button
+                type="button"
+                onClick={() => {
+                  navigator.clipboard.writeText(gameState.multiplayerGameId || "");
+                  setCopiedGameCode(true);
+                  setTimeout(() => setCopiedGameCode(false), 2000);
+                }}
+                className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 hover:bg-white/10 border border-white/10 text-xs font-mono text-[#F5F3EE] transition-all cursor-pointer"
+              >
+                {copiedGameCode ? <Check className="w-3.5 h-3.5 text-green-400" /> : <Copy className="w-3.5 h-3.5 text-[#C8A452]" />}
+                <span>{gameState.multiplayerGameId}</span>
+              </button>
+            )}
+
+            <button
+              type="button"
+              disabled={isMatchingBot}
+              onClick={async () => {
+                if (!gameState.multiplayerGameId) return;
+                setIsMatchingBot(true);
+                try {
+                  await api.matchBot(gameState.multiplayerGameId);
+                } catch (err) {
+                  console.error("Match error:", err);
+                } finally {
+                  setIsMatchingBot(false);
+                }
+              }}
+              className="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#C8A452] hover:bg-[#D4AF37] text-black text-xs font-bold transition-all shadow-md cursor-pointer disabled:opacity-50"
+            >
+              <Sparkles className="w-3.5 h-3.5 fill-current" />
+              <span>{isMatchingBot ? "Connexion..." : "Joueur Immédiat"}</span>
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Layout: Board (left) + History (right) */}
       <div className="mx-auto max-w-7xl grid grid-cols-1 lg:grid-cols-12 gap-4 items-start">
@@ -334,8 +403,28 @@ export const GamePage: React.FC = () => {
       <NewGameModal
         isOpen={isNewGameOpen}
         onClose={() => setIsNewGameOpen(false)}
-        onStartGame={(mode: GameMode, diff: AiDifficulty, playerColor: Player, speedMode?: boolean, timeLimit?: number, multiplayerGameId?: string) => {
-          startNewGame(mode, diff, playerColor, speedMode, timeLimit, multiplayerGameId);
+        onStartGame={(
+          mode: GameMode,
+          diff: AiDifficulty,
+          playerColor: Player,
+          speedMode?: boolean,
+          timeLimit?: number,
+          multiplayerGameId?: string,
+          multiplayerOpponentId?: string,
+          opponentName?: string,
+          opponentIsa?: number
+        ) => {
+          startNewGame(
+            mode,
+            diff,
+            playerColor,
+            speedMode,
+            timeLimit,
+            multiplayerGameId,
+            playerColor,
+            opponentName,
+            opponentIsa
+          );
         }}
         initialSpeedMode={settings.speedModeEnabled}
         initialTimeLimit={settings.turnTimeLimit}

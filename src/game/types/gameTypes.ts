@@ -81,6 +81,9 @@ export interface GameState {
   turnNumber: number;
   aiPlayerColor?: Player;
   multiplayerGameId?: string; // ID for multiplayer sessions
+  onlinePlayerColor?: Player; // The color assigned to the local user in online matches
+  opponentName?: string;
+  opponentIsa?: number;
   mandatoryCaptureActive: boolean;
   reason?: string;
 }

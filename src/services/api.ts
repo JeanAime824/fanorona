@@ -436,11 +436,22 @@ export const api = {
   },
 
   // Challenges
-  async sendChallenge(params: { target_user_id?: string; player_id?: string; game_type?: string; time_control?: number }) {
+  async sendChallenge(
+    targetOrParams:
+      | { target_user_id?: string; player_id?: string; game_type?: string; time_control?: number }
+      | string,
+    gameType = "friendly",
+    timeControl = 300
+  ) {
+    const body =
+      typeof targetOrParams === "string"
+        ? { target_user_id: targetOrParams, game_type: gameType, time_control: timeControl }
+        : targetOrParams;
+
     const res = await resilientFetch(`${API_BASE_URL}/api/challenges/send`, {
       method: "POST",
       headers: getAuthHeaders(),
-      body: JSON.stringify(params),
+      body: JSON.stringify(body),
     });
     return safeFetchJson(res, "Impossible d'envoyer l'invitation");
   },
@@ -496,6 +507,7 @@ export const api = {
     time_control: number;
     player_color?: "white" | "black";
     player_name?: string;
+    player_black_id?: string;
   }) {
     const res = await resilientFetch(`${API_BASE_URL}/api/games`, {
       method: "POST",
@@ -565,5 +577,13 @@ export const api = {
       body: JSON.stringify({ time_control: timeControl }),
     });
     return safeFetchJson(res, "Impossible de rechercher une partie");
+  },
+
+  async matchBot(gameId: string) {
+    const res = await resilientFetch(`${API_BASE_URL}/api/games/${gameId}/match-bot`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    return safeFetchJson(res, "Impossible de lancer avec un joueur en ligne");
   },
 };

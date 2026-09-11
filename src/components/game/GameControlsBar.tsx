@@ -3,7 +3,7 @@
  * Quick control toolbar for undo, redo, voluntary resignation, and new game trigger.
  */
 
-import { Clock, Flag, PlusCircle, Redo2, Trophy, Undo2, Zap } from "lucide-react";
+import { Clock, Flag, Redo2, Trophy, Undo2, Zap } from "lucide-react";
 import React from "react";
 import { Button } from "../ui/Button";
 
@@ -36,19 +36,6 @@ export const GameControlsBar: React.FC<GameControlsBarProps> = ({
 }) => {
   return (
     <div className="w-full flex flex-wrap items-center justify-between gap-2.5 sm:gap-3 px-3 py-2.5 bg-[#161514] border border-white/[0.06] rounded-lg">
-      {/* Primary Action: New Game */}
-      <Button
-        size="sm"
-        variant="primary"
-        onClick={onNewGame}
-        icon={<PlusCircle className="w-3.5 h-3.5" />}
-      >
-        Nouvelle partie
-      </Button>
-
-      {/* Spacer */}
-      <div className="flex-1 hidden sm:block" />
-
       {/* Game Timer Display (if speed mode) */}
       {speedModeEnabled && onToggleSpeedMode && (
         <div className="flex items-center gap-2 px-2 py-1 rounded-md bg-white/[0.04] border border-white/[0.08]">

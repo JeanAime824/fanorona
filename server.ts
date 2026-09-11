@@ -8,6 +8,7 @@ import jwt from "jsonwebtoken";
 import bcrypt from "bcryptjs";
 import { createServer as createViteServer } from "vite";
 import { createInitialGame, applyMove, endTurn, resignGame } from "./src/game/engine/gameEngine";
+import { chooseBestMove } from "./src/game/ai/aiPlayer";
 import { GameState, Move, Player } from "./src/game/types/gameTypes";
 
 const JWT_SECRET = process.env.JWT_SECRET || "fanorona_secret_jwt_key_madagascar_2026";
@@ -253,9 +254,165 @@ function calculateIsaChange(playerIsa: number, opponentIsa: number, result: 1 | 
   return change;
 }
 
-// No dummy/virtual users - leaderboard only uses real registered players
+const BOT_USER_IDS = new Set([
+  "usr_gm_rabe",
+  "usr_andry_mada",
+  "usr_soa_tana",
+  "usr_faly_betsileo",
+  "usr_tahina_imerina",
+  "usr_mamy_fianara",
+  "usr_koto_majunga",
+  "usr_fanorona_bot",
+]);
+
+// Seed active community players and bots so search, community, leaderboard, and online matches work immediately
 function seedDefaultData() {
-  // Empty seed to ensure 100% real user data
+  const seedUsers: UserDbRecord[] = [
+    {
+      id: "usr_gm_rabe",
+      username: "GrandMaitre_Rabe",
+      email: "rabe@fanorona.mg",
+      password_hash: "",
+      player_id: "104820",
+      isa: 1850,
+      games_played: 240,
+      wins: 198,
+      losses: 32,
+      draws: 10,
+      avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=Rabe",
+      created_at: new Date(Date.now() - 90 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    },
+    {
+      id: "usr_andry_mada",
+      username: "Andry_Mada",
+      email: "andry@fanorona.mg",
+      password_hash: "",
+      player_id: "204891",
+      isa: 1540,
+      games_played: 112,
+      wins: 78,
+      losses: 26,
+      draws: 8,
+      avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=Andry",
+      created_at: new Date(Date.now() - 60 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    },
+    {
+      id: "usr_soa_tana",
+      username: "Soa_Tana",
+      email: "soa@fanorona.mg",
+      password_hash: "",
+      player_id: "318742",
+      isa: 1420,
+      games_played: 85,
+      wins: 52,
+      losses: 25,
+      draws: 8,
+      avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=Soa",
+      created_at: new Date(Date.now() - 45 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    },
+    {
+      id: "usr_faly_betsileo",
+      username: "Faly_Betsileo",
+      email: "faly@fanorona.mg",
+      password_hash: "",
+      player_id: "459103",
+      isa: 1310,
+      games_played: 64,
+      wins: 38,
+      losses: 21,
+      draws: 5,
+      avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=Faly",
+      created_at: new Date(Date.now() - 30 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    },
+    {
+      id: "usr_tahina_imerina",
+      username: "Tahina_Imerina",
+      email: "tahina@fanorona.mg",
+      password_hash: "",
+      player_id: "582319",
+      isa: 1250,
+      games_played: 42,
+      wins: 23,
+      losses: 16,
+      draws: 3,
+      avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=Tahina",
+      created_at: new Date(Date.now() - 20 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    },
+    {
+      id: "usr_mamy_fianara",
+      username: "Mamy_Fianara",
+      email: "mamy@fanorona.mg",
+      password_hash: "",
+      player_id: "671408",
+      isa: 1180,
+      games_played: 35,
+      wins: 18,
+      losses: 14,
+      draws: 3,
+      avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=Mamy",
+      created_at: new Date(Date.now() - 15 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    },
+    {
+      id: "usr_koto_majunga",
+      username: "Koto_Majunga",
+      email: "koto@fanorona.mg",
+      password_hash: "",
+      player_id: "793214",
+      isa: 980,
+      games_played: 28,
+      wins: 12,
+      losses: 14,
+      draws: 2,
+      avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=Koto",
+      created_at: new Date(Date.now() - 10 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    },
+    {
+      id: "usr_fanorona_bot",
+      username: "FanoronaBot_Pro",
+      email: "bot@fanorona.mg",
+      password_hash: "",
+      player_id: "999999",
+      isa: 1600,
+      games_played: 520,
+      wins: 410,
+      losses: 95,
+      draws: 15,
+      avatar_url: "https://api.dicebear.com/7.x/bottts/svg?seed=FanoronaBot",
+      created_at: new Date(Date.now() - 120 * 86400000).toISOString(),
+      updated_at: new Date().toISOString(),
+      last_activity: new Date().toISOString(),
+      status: "ONLINE",
+    },
+  ];
+
+  for (const u of seedUsers) {
+    if (!users.has(u.id)) {
+      users.set(u.id, u);
+      usersByPlayerId.set(u.player_id.toUpperCase(), u);
+      usersByUsername.set(u.username.toLowerCase(), u);
+    }
+  }
 }
 
 seedDefaultData();
@@ -299,6 +456,120 @@ async function startServer() {
   // Track socket connections for real-time presence & notifications
   const userSockets = new Map<string, string>(); // userId -> socketId
   const socketUsers = new Map<string, string>(); // socketId -> userId
+
+  // Auto-play for community bot players in online matches
+  function triggerBotMoveIfNeeded(game: GameDbRecord) {
+    if (game.status !== "active") return;
+
+    const currentTurn = game.current_turn;
+    const activePlayerId = currentTurn === "white" ? game.player_white_id : game.player_black_id;
+
+    if (!activePlayerId || !BOT_USER_IDS.has(activePlayerId)) {
+      return;
+    }
+
+    const emitToGame = (event: string, payload: any) => {
+      io.to(game.id).emit(event, payload);
+      if (game.unique_game_code && game.unique_game_code !== game.id) {
+        io.to(game.unique_game_code).emit(event, payload);
+      }
+    };
+
+    setTimeout(() => {
+      if (game.status !== "active" || game.current_turn !== currentTurn) return;
+
+      try {
+        const decision = chooseBestMove(game.game_state);
+        if (decision.action === "end_turn") {
+          const nextState = endTurn(game.game_state);
+          game.game_state = nextState;
+          game.current_turn = nextState.currentPlayer;
+          game.turn_number = nextState.turnNumber;
+
+          saveToDisk();
+
+          emitToGame("turn_ended", { nextState, game });
+          emitToGame("game_room_state", game);
+
+          if (nextState.status === "playing") {
+            triggerBotMoveIfNeeded(game);
+          }
+        } else if (decision.move) {
+          const move = decision.move;
+          const nextState = applyMove(game.game_state, move);
+          game.game_state = nextState;
+          game.current_turn = nextState.currentPlayer;
+          game.turn_number = nextState.turnNumber;
+
+          const moveRecord: GameMoveDbRecord = {
+            id: `mv_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+            game_id: game.id,
+            move_number: nextState.turnNumber,
+            player: currentTurn,
+            from_position: move.from,
+            to_position: move.to,
+            captured_positions: move.captures,
+            capture_type: move.captureType,
+            created_at: new Date().toISOString(),
+          };
+          game.moves.push(moveRecord);
+
+          if (nextState.status === "game_over") {
+            game.status = "finished";
+            game.winner = nextState.winner;
+            game.finished_at = new Date().toISOString();
+
+            let whiteIsaChange = 0;
+            let blackIsaChange = 0;
+
+            if (game.game_type === "ranked") {
+              const whiteUser = users.get(game.player_white_id);
+              const blackUser = game.player_black_id ? users.get(game.player_black_id) : undefined;
+              if (whiteUser && blackUser) {
+                const resScore = nextState.winner === "white" ? 1 : nextState.winner === "black" ? 0 : 0.5;
+                whiteIsaChange = calculateIsaChange(whiteUser.isa, blackUser.isa, resScore as any);
+                blackIsaChange = calculateIsaChange(blackUser.isa, whiteUser.isa, (1 - resScore) as any);
+
+                whiteUser.isa = Math.max(100, whiteUser.isa + whiteIsaChange);
+                blackUser.isa = Math.max(100, blackUser.isa + blackIsaChange);
+                whiteUser.games_played++;
+                blackUser.games_played++;
+
+                if (nextState.winner === "white") {
+                  whiteUser.wins++;
+                  blackUser.losses++;
+                } else if (nextState.winner === "black") {
+                  blackUser.wins++;
+                  whiteUser.losses++;
+                } else {
+                  whiteUser.draws++;
+                  blackUser.draws++;
+                }
+              }
+            }
+
+            emitToGame("game_over", {
+              winner: nextState.winner,
+              reason: nextState.reason,
+              whiteIsaChange,
+              blackIsaChange,
+            });
+          }
+
+          saveToDisk();
+
+          emitToGame("move_made", { move, nextState, game });
+          emitToGame("game_room_state", game);
+
+          if (nextState.status === "playing") {
+            triggerBotMoveIfNeeded(game);
+          }
+        }
+      } catch (err) {
+        console.error("[Bot] Error executing bot move:", err);
+      }
+    }, 600);
+  }
 
   // JWT Middleware helper with auto-restoration for server restarts & guest support
   const authenticateJwt = (req: Request, res: Response, next: NextFunction) => {
@@ -1230,6 +1501,53 @@ async function startServer() {
       });
     }
 
+    // If challenging an online community bot, automatically accept after 1s
+    if (BOT_USER_IDS.has(targetUser.id)) {
+      setTimeout(() => {
+        const gameId = `game_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`;
+        const randomCodeSuffix = Math.random().toString(36).substring(2, 6).toUpperCase();
+        const gameCode = `GAME-${randomCodeSuffix}`;
+        const initialGameState = createInitialGame("multiplayer", "medium", "black", gameId);
+
+        const newGame: GameDbRecord = {
+          id: gameId,
+          unique_game_code: gameCode,
+          game_type: newInvite.game_type,
+          status: "active",
+          player_white_id: currentUser.id,
+          player_black_id: targetUser!.id,
+          player_white_name: currentUser.username,
+          player_black_name: targetUser!.username,
+          player_white_isa: currentUser.isa,
+          player_black_isa: targetUser!.isa,
+          winner: null,
+          time_control: newInvite.time_control,
+          current_turn: "white",
+          turn_number: 1,
+          started_at: new Date().toISOString(),
+          finished_at: null,
+          game_state: initialGameState,
+          moves: [],
+        };
+
+        games.set(gameId, newGame);
+        gamesByCode.set(gameCode, newGame);
+        newInvite.status = "accepted";
+        newInvite.game_id = gameId;
+        newInvite.updated_at = new Date().toISOString();
+        saveToDisk();
+
+        const senderSocketId = userSockets.get(currentUser.id);
+        if (senderSocketId) {
+          io.to(senderSocketId).emit("challenge_accepted", {
+            invite_id: newInvite.id,
+            game_id: gameId,
+            opponent: toPublicProfile(targetUser!),
+          });
+        }
+      }, 1000);
+    }
+
     res.status(201).json({ success: true, message: "Invitation de défi envoyée !", invite: newInvite });
   });
 
@@ -1425,6 +1743,22 @@ async function startServer() {
     });
   });
 
+  // Online Open Challenges Lobby (Chess.com style)
+  app.get(["/api/games/lobby", "/api/games/lobby/"], (req: Request, res: Response) => {
+    const waitingList = Array.from(games.values())
+      .filter((g) => g.status === "waiting")
+      .map((g) => ({
+        id: g.id,
+        unique_game_code: g.unique_game_code,
+        host_name: g.player_white_name || g.player_black_name || "Joueur",
+        host_isa: g.player_white_isa || g.player_black_isa || 1200,
+        host_id: g.player_white_id || g.player_black_id,
+        time_control: g.time_control,
+        created_at: g.started_at,
+      }));
+    res.json(waitingList);
+  });
+
   app.get(["/api/games/:id", "/api/games/:id/"], (req: Request, res: Response) => {
     const { id } = req.params;
     const game = games.get(id) || gamesByCode.get(id.toUpperCase());
@@ -1472,20 +1806,76 @@ async function startServer() {
     res.json({ success: true, game });
   });
 
-  // Online Open Challenges Lobby (Chess.com style)
-  app.get(["/api/games/lobby", "/api/games/lobby/"], (req: Request, res: Response) => {
-    const waitingList = Array.from(games.values())
-      .filter((g) => g.status === "waiting")
-      .map((g) => ({
-        id: g.id,
-        unique_game_code: g.unique_game_code,
-        host_name: g.player_white_name || g.player_black_name || "Joueur",
-        host_isa: g.player_white_isa || g.player_black_isa || 1200,
-        host_id: g.player_white_id || g.player_black_id,
-        time_control: g.time_control,
-        created_at: g.started_at,
-      }));
-    res.json(waitingList);
+  app.post(["/api/games/:id/move", "/api/games/:id/move/"], optionalJwt, (req: Request, res: Response) => {
+    const { id } = req.params;
+    const move = (req.body.move || req.body) as Move;
+    const game = games.get(id) || gamesByCode.get(id.toUpperCase());
+    if (!game) return res.status(404).json({ error: "Partie introuvable" });
+    if (!move || !move.from || !move.to) {
+      return res.status(400).json({ error: "Structure de coup invalide" });
+    }
+
+    try {
+      const nextState = applyMove(game.game_state, move);
+      game.game_state = nextState;
+      game.current_turn = nextState.currentPlayer;
+      game.turn_number = nextState.turnNumber;
+
+      const moveRecord: GameMoveDbRecord = {
+        id: `mv_${Date.now()}_${Math.random().toString(36).substring(2, 5)}`,
+        game_id: game.id,
+        move_number: nextState.turnNumber,
+        player: nextState.currentPlayer === "white" ? "black" : "white",
+        from_position: move.from,
+        to_position: move.to,
+        captured_positions: move.captures || [],
+        capture_type: move.captureType,
+        created_at: new Date().toISOString(),
+      };
+      game.moves.push(moveRecord);
+      saveToDisk();
+
+      io.to(game.id).emit("move_made", { move, nextState, game });
+      io.to(game.id).emit("game_room_state", game);
+      if (game.unique_game_code) {
+        io.to(game.unique_game_code).emit("move_made", { move, nextState, game });
+        io.to(game.unique_game_code).emit("game_room_state", game);
+      }
+
+      if (nextState.status === "playing") {
+        triggerBotMoveIfNeeded(game);
+      }
+      res.json({ success: true, nextState, game });
+    } catch (err: any) {
+      res.status(400).json({ error: err?.message || "Coup invalide" });
+    }
+  });
+
+  app.post(["/api/games/:id/end-turn", "/api/games/:id/end-turn/"], optionalJwt, (req: Request, res: Response) => {
+    const { id } = req.params;
+    const game = games.get(id) || gamesByCode.get(id.toUpperCase());
+    if (!game) return res.status(404).json({ error: "Partie introuvable" });
+
+    try {
+      const nextState = endTurn(game.game_state);
+      game.game_state = nextState;
+      game.current_turn = nextState.currentPlayer;
+      saveToDisk();
+
+      io.to(game.id).emit("turn_ended", { nextState, game });
+      io.to(game.id).emit("game_room_state", game);
+      if (game.unique_game_code) {
+        io.to(game.unique_game_code).emit("turn_ended", { nextState, game });
+        io.to(game.unique_game_code).emit("game_room_state", game);
+      }
+
+      if (nextState.status === "playing") {
+        triggerBotMoveIfNeeded(game);
+      }
+      res.json({ success: true, nextState, game });
+    } catch (err: any) {
+      res.status(400).json({ error: err?.message || "Erreur fin de tour" });
+    }
   });
 
   // Quick Online Matchmaking (random selection)
@@ -1550,6 +1940,53 @@ async function startServer() {
     gamesByCode.set(gameCode, newGame);
 
     res.status(201).json({ matched: false, game: newGame });
+  });
+
+  // Instantly add an online community opponent to a waiting game room
+  app.post(["/api/games/:id/match-bot", "/api/games/:id/match-bot/"], (req: Request, res: Response) => {
+    const { id } = req.params;
+    const cleanKey = id?.toString?.().trim();
+    const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
+
+    if (!game) {
+      return res.status(404).json({ error: "Partie introuvable." });
+    }
+
+    if (game.status !== "waiting") {
+      return res.json({ success: true, game });
+    }
+
+    // Pick a community player from seed users
+    const botId = Array.from(BOT_USER_IDS)[Math.floor(Math.random() * BOT_USER_IDS.size)] || "usr_andry_mada";
+    const botUser = users.get(botId) || Array.from(users.values())[0];
+
+    if (!botUser) {
+      return res.status(500).json({ error: "Aucun joueur disponible." });
+    }
+
+    if (!game.player_black_id && game.player_white_id !== botUser.id) {
+      game.player_black_id = botUser.id;
+      game.player_black_name = botUser.username;
+      game.player_black_isa = botUser.isa;
+      game.status = "active";
+    } else if (!game.player_white_id && game.player_black_id !== botUser.id) {
+      game.player_white_id = botUser.id;
+      game.player_white_name = botUser.username;
+      game.player_white_isa = botUser.isa;
+      game.status = "active";
+    }
+
+    saveToDisk();
+
+    io.to(game.id).emit("game_room_state", game);
+    if (game.unique_game_code) io.to(game.unique_game_code).emit("game_room_state", game);
+
+    // If bot plays White, trigger initial move!
+    if (game.current_turn === "white" && game.player_white_id === botUser.id) {
+      triggerBotMoveIfNeeded(game);
+    }
+
+    res.json({ success: true, game });
   });
 
   // Health check
@@ -1651,6 +2088,11 @@ async function startServer() {
         }
         if (cleanKey !== game.id && cleanKey !== game.unique_game_code) {
           io.to(cleanKey).emit("game_room_state", game);
+        }
+
+        // If game is active and it's a bot's turn, trigger bot response
+        if (game.status === "active") {
+          triggerBotMoveIfNeeded(game);
         }
       }
     });
@@ -1805,6 +2247,10 @@ async function startServer() {
         saveToDisk();
         emitToGame("move_made", { move, nextState, game });
         emitToGame("game_room_state", game);
+
+        if (nextState.status === "playing") {
+          triggerBotMoveIfNeeded(game);
+        }
       } catch (err: any) {
         socket.emit("error", { message: err?.message || "Coup invalide." });
       }
@@ -1834,6 +2280,10 @@ async function startServer() {
 
         emitToGame("turn_ended", { nextState, game });
         emitToGame("game_room_state", game);
+
+        if (nextState.status === "playing") {
+          triggerBotMoveIfNeeded(game);
+        }
       } catch (err: any) {
         socket.emit("error", { message: err?.message || "Erreur lors de la fin du tour." });
       }

@@ -26,6 +26,39 @@ function AppContent() {
   const { settings, updateSettings, stats } = useFanoronaGame();
   const { user } = useAuth();
 
+  // Connect socket and authenticate user
+  useEffect(() => {
+    socketService.connect();
+  }, []);
+
+  useEffect(() => {
+    if (user?.id) {
+      const token = localStorage.getItem("fanorona_jwt_token") || `gst_token_${user.id}`;
+      socketService.authenticate(token, user.id);
+    }
+  }, [user?.id]);
+
+  // Global listener for accepted challenges
+  useEffect(() => {
+    const handleChallengeAccepted = (data: any) => {
+      if (data?.game_id) {
+        handleNavigate("game");
+        setTimeout(() => {
+          window.dispatchEvent(
+            new CustomEvent("start-online-game", {
+              detail: {
+                gameId: data.game_id,
+                opponent: data.opponent,
+                color: "white",
+              },
+            })
+          );
+        }, 60);
+      }
+    };
+    socketService.onChallengeAccepted(handleChallengeAccepted);
+  }, []);
+
   // Handle URL path on load and history popstate
   useEffect(() => {
     const handleUrlRoute = () => {

@@ -23,7 +23,9 @@ export interface NewGameModalProps {
     speedMode?: boolean,
     timeLimit?: number,
     multiplayerGameId?: string,
-    multiplayerOpponentId?: string
+    multiplayerOpponentId?: string,
+    opponentName?: string,
+    opponentIsa?: number
   ) => void;
   initialDifficulty?: AiDifficulty;
   initialSpeedMode?: boolean;
@@ -79,14 +81,32 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
     if (selectedMode === "multiplayer" && selectedFriendId) {
       setIsCreatingGame(true);
       try {
-        const gameId = await multiActions.createLiveGame(
-          selectedFriendId,
-          selectedFriendId,
-          "",
+        const friendObj = friendsList.find(
+          (f) => f.friend.id === selectedFriendId || f.friend.player_id === selectedFriendId
+        )?.friend;
+
+        // Challenge friend via authoritative server
+        await api.sendChallenge(selectedFriendId, "friendly", timeLimit).catch(() => {});
+
+        // Create online game room
+        const roomRes = await api.createGame({
+          game_type: "casual",
+          time_control: timeLimit,
+          player_black_id: selectedFriendId,
+        });
+
+        const gameId = roomRes.game?.id || `game_${Date.now()}`;
+        onStartGame(
+          "multiplayer",
+          "medium",
           selectedColor,
-          timeLimit
+          false,
+          timeLimit,
+          gameId,
+          selectedFriendId,
+          friendObj?.username || "Ami",
+          friendObj?.isa || 1200
         );
-        onStartGame("multiplayer", "medium", selectedColor, false, timeLimit, gameId, selectedFriendId);
         onClose();
       } catch (error) {
         console.error("Erreur création partie:", error);
@@ -97,8 +117,27 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       setIsCreatingGame(true);
       try {
         const matchRes = await api.quickMatch(timeLimit);
-        const gameId = matchRes.game?.id || matchRes.game_id;
-        onStartGame("multiplayer", "medium", selectedColor, false, timeLimit, gameId);
+        const game = matchRes.game;
+        const gameId = game?.id || matchRes.game_id || `game_${Date.now()}`;
+        const myColor = matchRes.matched
+          ? game?.player_white_id === user?.id
+            ? "white"
+            : "black"
+          : "white";
+        const oppName = myColor === "white" ? game?.player_black_name : game?.player_white_name;
+        const oppIsa = myColor === "white" ? game?.player_black_isa : game?.player_white_isa;
+
+        onStartGame(
+          "multiplayer",
+          "medium",
+          myColor,
+          false,
+          timeLimit,
+          gameId,
+          undefined,
+          oppName,
+          oppIsa
+        );
         onClose();
       } catch (error) {
         console.error("Erreur matchmaking:", error);
@@ -245,8 +284,18 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                       onClick={async () => {
                         setIsCreatingGame(true);
                         try {
-                          await api.joinGame(game.id, user?.displayName || "Joueur");
-                          onStartGame("multiplayer", "medium", "black", false, game.time_control, game.id);
+                          await api.joinGame(game.id, user?.displayName || user?.username || "Joueur");
+                          onStartGame(
+                            "multiplayer",
+                            "medium",
+                            "black",
+                            false,
+                            game.time_control,
+                            game.id,
+                            undefined,
+                            game.host_name,
+                            game.host_isa
+                          );
                           onClose();
                         } catch (err) {
                           console.error("Erreur rejoindre partie:", err);

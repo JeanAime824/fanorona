@@ -1,0 +1,1312 @@
+{
+  "users": [
+    {
+      "id": "usr_gm_rabe",
+      "username": "GrandMaitre_Rabe",
+      "email": "rabe@fanorona.mg",
+      "password_hash": "",
+      "player_id": "104820",
+      "isa": 1850,
+      "games_played": 240,
+      "wins": 198,
+      "losses": 32,
+      "draws": 10,
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=Rabe",
+      "created_at": "2026-06-13T17:44:32.416Z",
+      "updated_at": "2026-09-11T17:44:32.417Z",
+      "last_activity": "2026-09-11T17:44:32.417Z",
+      "status": "ONLINE"
+    },
+    {
+      "id": "usr_andry_mada",
+      "username": "Andry_Mada",
+      "email": "andry@fanorona.mg",
+      "password_hash": "",
+      "player_id": "204891",
+      "isa": 1540,
+      "games_played": 112,
+      "wins": 78,
+      "losses": 26,
+      "draws": 8,
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=Andry",
+      "created_at": "2026-07-13T17:44:32.417Z",
+      "updated_at": "2026-09-11T17:44:32.417Z",
+      "last_activity": "2026-09-11T17:44:32.417Z",
+      "status": "ONLINE"
+    },
+    {
+      "id": "usr_soa_tana",
+      "username": "Soa_Tana",
+      "email": "soa@fanorona.mg",
+      "password_hash": "",
+      "player_id": "318742",
+      "isa": 1420,
+      "games_played": 85,
+      "wins": 52,
+      "losses": 25,
+      "draws": 8,
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=Soa",
+      "created_at": "2026-07-28T17:44:32.417Z",
+      "updated_at": "2026-09-11T17:44:32.417Z",
+      "last_activity": "2026-09-11T17:44:32.417Z",
+      "status": "ONLINE"
+    },
+    {
+      "id": "usr_faly_betsileo",
+      "username": "Faly_Betsileo",
+      "email": "faly@fanorona.mg",
+      "password_hash": "",
+      "player_id": "459103",
+      "isa": 1310,
+      "games_played": 64,
+      "wins": 38,
+      "losses": 21,
+      "draws": 5,
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=Faly",
+      "created_at": "2026-08-12T17:44:32.417Z",
+      "updated_at": "2026-09-11T17:44:32.417Z",
+      "last_activity": "2026-09-11T17:44:32.417Z",
+      "status": "ONLINE"
+    },
+    {
+      "id": "usr_tahina_imerina",
+      "username": "Tahina_Imerina",
+      "email": "tahina@fanorona.mg",
+      "password_hash": "",
+      "player_id": "582319",
+      "isa": 1250,
+      "games_played": 42,
+      "wins": 23,
+      "losses": 16,
+      "draws": 3,
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=Tahina",
+      "created_at": "2026-08-22T17:44:32.417Z",
+      "updated_at": "2026-09-11T17:44:32.417Z",
+      "last_activity": "2026-09-11T17:44:32.417Z",
+      "status": "ONLINE"
+    },
+    {
+      "id": "usr_mamy_fianara",
+      "username": "Mamy_Fianara",
+      "email": "mamy@fanorona.mg",
+      "password_hash": "",
+      "player_id": "671408",
+      "isa": 1180,
+      "games_played": 35,
+      "wins": 18,
+      "losses": 14,
+      "draws": 3,
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=Mamy",
+      "created_at": "2026-08-27T17:44:32.417Z",
+      "updated_at": "2026-09-11T17:44:32.417Z",
+      "last_activity": "2026-09-11T17:44:32.417Z",
+      "status": "ONLINE"
+    },
+    {
+      "id": "usr_koto_majunga",
+      "username": "Koto_Majunga",
+      "email": "koto@fanorona.mg",
+      "password_hash": "",
+      "player_id": "793214",
+      "isa": 980,
+      "games_played": 28,
+      "wins": 12,
+      "losses": 14,
+      "draws": 2,
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=Koto",
+      "created_at": "2026-09-01T17:44:32.417Z",
+      "updated_at": "2026-09-11T17:44:32.417Z",
+      "last_activity": "2026-09-11T17:44:32.417Z",
+      "status": "ONLINE"
+    },
+    {
+      "id": "usr_fanorona_bot",
+      "username": "FanoronaBot_Pro",
+      "email": "bot@fanorona.mg",
+      "password_hash": "",
+      "player_id": "999999",
+      "isa": 1600,
+      "games_played": 520,
+      "wins": 410,
+      "losses": 95,
+      "draws": 15,
+      "avatar_url": "https://api.dicebear.com/7.x/bottts/svg?seed=FanoronaBot",
+      "created_at": "2026-05-14T17:44:32.417Z",
+      "updated_at": "2026-09-11T17:44:32.417Z",
+      "last_activity": "2026-09-11T17:44:32.417Z",
+      "status": "ONLINE"
+    }
+  ],
+  "friendships": [],
+  "friendRequests": [],
+  "gameInvitations": [],
+  "games": [
+    {
+      "id": "game_1789148681128_tkhq",
+      "unique_game_code": "GAME-GRH4",
+      "game_type": "ranked",
+      "status": "active",
+      "player_white_id": "guest_1789148681128",
+      "player_black_id": "usr_faly_betsileo",
+      "player_white_name": "RabeTest",
+      "player_black_name": "Faly_Betsileo",
+      "player_white_isa": 1200,
+      "player_black_isa": 1310,
+      "winner": null,
+      "time_control": 300,
+      "current_turn": "white",
+      "turn_number": 1,
+      "started_at": "2026-09-11T17:44:41.129Z",
+      "finished_at": null,
+      "game_state": {
+        "board": [
+          [
+            {
+              "id": "black-b1",
+              "player": "black"
+            },
+            {
+              "id": "black-b2",
+              "player": "black"
+            },
+            {
+              "id": "black-b3",
+              "player": "black"
+            },
+            {
+              "id": "black-b4",
+              "player": "black"
+            },
+            {
+              "id": "black-b5",
+              "player": "black"
+            },
+            {
+              "id": "black-b6",
+              "player": "black"
+            },
+            {
+              "id": "black-b7",
+              "player": "black"
+            },
+            {
+              "id": "black-b8",
+              "player": "black"
+            },
+            {
+              "id": "black-b9",
+              "player": "black"
+            }
+          ],
+          [
+            {
+              "id": "black-b10",
+              "player": "black"
+            },
+            {
+              "id": "black-b11",
+              "player": "black"
+            },
+            {
+              "id": "black-b12",
+              "player": "black"
+            },
+            {
+              "id": "black-b13",
+              "player": "black"
+            },
+            {
+              "id": "black-b14",
+              "player": "black"
+            },
+            {
+              "id": "black-b15",
+              "player": "black"
+            },
+            {
+              "id": "black-b16",
+              "player": "black"
+            },
+            {
+              "id": "black-b17",
+              "player": "black"
+            },
+            {
+              "id": "black-b18",
+              "player": "black"
+            }
+          ],
+          [
+            {
+              "id": "black-b19",
+              "player": "black"
+            },
+            {
+              "id": "white-w1",
+              "player": "white"
+            },
+            {
+              "id": "black-b20",
+              "player": "black"
+            },
+            {
+              "id": "white-w2",
+              "player": "white"
+            },
+            null,
+            {
+              "id": "black-b21",
+              "player": "black"
+            },
+            {
+              "id": "white-w3",
+              "player": "white"
+            },
+            {
+              "id": "black-b22",
+              "player": "black"
+            },
+            {
+              "id": "white-w4",
+              "player": "white"
+            }
+          ],
+          [
+            {
+              "id": "white-w5",
+              "player": "white"
+            },
+            {
+              "id": "white-w6",
+              "player": "white"
+            },
+            {
+              "id": "white-w7",
+              "player": "white"
+            },
+            {
+              "id": "white-w8",
+              "player": "white"
+            },
+            {
+              "id": "white-w9",
+              "player": "white"
+            },
+            {
+              "id": "white-w10",
+              "player": "white"
+            },
+            {
+              "id": "white-w11",
+              "player": "white"
+            },
+            {
+              "id": "white-w12",
+              "player": "white"
+            },
+            {
+              "id": "white-w13",
+              "player": "white"
+            }
+          ],
+          [
+            {
+              "id": "white-w14",
+              "player": "white"
+            },
+            {
+              "id": "white-w15",
+              "player": "white"
+            },
+            {
+              "id": "white-w16",
+              "player": "white"
+            },
+            {
+              "id": "white-w17",
+              "player": "white"
+            },
+            {
+              "id": "white-w18",
+              "player": "white"
+            },
+            {
+              "id": "white-w19",
+              "player": "white"
+            },
+            {
+              "id": "white-w20",
+              "player": "white"
+            },
+            {
+              "id": "white-w21",
+              "player": "white"
+            },
+            {
+              "id": "white-w22",
+              "player": "white"
+            }
+          ]
+        ],
+        "currentPlayer": "white",
+        "selectedPosition": null,
+        "legalMoves": [
+          {
+            "from": {
+              "row": 2,
+              "col": 3
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 2,
+                "col": 5
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": 0,
+              "col": 1
+            }
+          },
+          {
+            "from": {
+              "row": 2,
+              "col": 3
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 2,
+                "col": 2
+              }
+            ],
+            "captureType": "withdrawal",
+            "direction": {
+              "row": 0,
+              "col": 1
+            }
+          },
+          {
+            "from": {
+              "row": 3,
+              "col": 3
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 1,
+                "col": 5
+              },
+              {
+                "row": 0,
+                "col": 6
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": -1,
+              "col": 1
+            }
+          },
+          {
+            "from": {
+              "row": 3,
+              "col": 4
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 1,
+                "col": 4
+              },
+              {
+                "row": 0,
+                "col": 4
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": -1,
+              "col": 0
+            }
+          },
+          {
+            "from": {
+              "row": 3,
+              "col": 5
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 1,
+                "col": 3
+              },
+              {
+                "row": 0,
+                "col": 2
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": -1,
+              "col": -1
+            }
+          }
+        ],
+        "captureSequence": null,
+        "moveHistory": [],
+        "capturedPieces": {
+          "white": 0,
+          "black": 0
+        },
+        "status": "playing",
+        "winner": null,
+        "gameMode": "multiplayer",
+        "difficulty": "medium",
+        "turnNumber": 1,
+        "multiplayerGameId": "game_1789148681128_tkhq",
+        "mandatoryCaptureActive": true
+      },
+      "moves": []
+    },
+    {
+      "id": "game_1789148724573_1c8m",
+      "unique_game_code": "GAME-PRUB",
+      "game_type": "ranked",
+      "status": "active",
+      "player_white_id": "guest_1789148724573",
+      "player_black_id": "usr_andry_mada",
+      "player_white_name": "Alpha",
+      "player_black_name": "Andry_Mada",
+      "player_white_isa": 1200,
+      "player_black_isa": 1540,
+      "winner": null,
+      "time_control": 300,
+      "current_turn": "white",
+      "turn_number": 1,
+      "started_at": "2026-09-11T17:45:24.574Z",
+      "finished_at": null,
+      "game_state": {
+        "board": [
+          [
+            {
+              "id": "black-b1",
+              "player": "black"
+            },
+            {
+              "id": "black-b2",
+              "player": "black"
+            },
+            {
+              "id": "black-b3",
+              "player": "black"
+            },
+            {
+              "id": "black-b4",
+              "player": "black"
+            },
+            {
+              "id": "black-b5",
+              "player": "black"
+            },
+            {
+              "id": "black-b6",
+              "player": "black"
+            },
+            {
+              "id": "black-b7",
+              "player": "black"
+            },
+            {
+              "id": "black-b8",
+              "player": "black"
+            },
+            {
+              "id": "black-b9",
+              "player": "black"
+            }
+          ],
+          [
+            {
+              "id": "black-b10",
+              "player": "black"
+            },
+            {
+              "id": "black-b11",
+              "player": "black"
+            },
+            {
+              "id": "black-b12",
+              "player": "black"
+            },
+            {
+              "id": "black-b13",
+              "player": "black"
+            },
+            {
+              "id": "black-b14",
+              "player": "black"
+            },
+            {
+              "id": "black-b15",
+              "player": "black"
+            },
+            {
+              "id": "black-b16",
+              "player": "black"
+            },
+            {
+              "id": "black-b17",
+              "player": "black"
+            },
+            {
+              "id": "black-b18",
+              "player": "black"
+            }
+          ],
+          [
+            {
+              "id": "black-b19",
+              "player": "black"
+            },
+            {
+              "id": "white-w1",
+              "player": "white"
+            },
+            {
+              "id": "black-b20",
+              "player": "black"
+            },
+            {
+              "id": "white-w2",
+              "player": "white"
+            },
+            null,
+            {
+              "id": "black-b21",
+              "player": "black"
+            },
+            {
+              "id": "white-w3",
+              "player": "white"
+            },
+            {
+              "id": "black-b22",
+              "player": "black"
+            },
+            {
+              "id": "white-w4",
+              "player": "white"
+            }
+          ],
+          [
+            {
+              "id": "white-w5",
+              "player": "white"
+            },
+            {
+              "id": "white-w6",
+              "player": "white"
+            },
+            {
+              "id": "white-w7",
+              "player": "white"
+            },
+            {
+              "id": "white-w8",
+              "player": "white"
+            },
+            {
+              "id": "white-w9",
+              "player": "white"
+            },
+            {
+              "id": "white-w10",
+              "player": "white"
+            },
+            {
+              "id": "white-w11",
+              "player": "white"
+            },
+            {
+              "id": "white-w12",
+              "player": "white"
+            },
+            {
+              "id": "white-w13",
+              "player": "white"
+            }
+          ],
+          [
+            {
+              "id": "white-w14",
+              "player": "white"
+            },
+            {
+              "id": "white-w15",
+              "player": "white"
+            },
+            {
+              "id": "white-w16",
+              "player": "white"
+            },
+            {
+              "id": "white-w17",
+              "player": "white"
+            },
+            {
+              "id": "white-w18",
+              "player": "white"
+            },
+            {
+              "id": "white-w19",
+              "player": "white"
+            },
+            {
+              "id": "white-w20",
+              "player": "white"
+            },
+            {
+              "id": "white-w21",
+              "player": "white"
+            },
+            {
+              "id": "white-w22",
+              "player": "white"
+            }
+          ]
+        ],
+        "currentPlayer": "white",
+        "selectedPosition": null,
+        "legalMoves": [
+          {
+            "from": {
+              "row": 2,
+              "col": 3
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 2,
+                "col": 5
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": 0,
+              "col": 1
+            }
+          },
+          {
+            "from": {
+              "row": 2,
+              "col": 3
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 2,
+                "col": 2
+              }
+            ],
+            "captureType": "withdrawal",
+            "direction": {
+              "row": 0,
+              "col": 1
+            }
+          },
+          {
+            "from": {
+              "row": 3,
+              "col": 3
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 1,
+                "col": 5
+              },
+              {
+                "row": 0,
+                "col": 6
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": -1,
+              "col": 1
+            }
+          },
+          {
+            "from": {
+              "row": 3,
+              "col": 4
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 1,
+                "col": 4
+              },
+              {
+                "row": 0,
+                "col": 4
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": -1,
+              "col": 0
+            }
+          },
+          {
+            "from": {
+              "row": 3,
+              "col": 5
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 1,
+                "col": 3
+              },
+              {
+                "row": 0,
+                "col": 2
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": -1,
+              "col": -1
+            }
+          }
+        ],
+        "captureSequence": null,
+        "moveHistory": [],
+        "capturedPieces": {
+          "white": 0,
+          "black": 0
+        },
+        "status": "playing",
+        "winner": null,
+        "gameMode": "multiplayer",
+        "difficulty": "medium",
+        "turnNumber": 1,
+        "multiplayerGameId": "game_1789148724573_1c8m",
+        "mandatoryCaptureActive": true
+      },
+      "moves": []
+    },
+    {
+      "id": "game_1789148761957_qkrr",
+      "unique_game_code": "GAME-M4QP",
+      "game_type": "ranked",
+      "status": "active",
+      "player_white_id": "guest_1789148761957",
+      "player_black_id": "usr_gm_rabe",
+      "player_white_name": "Alpha",
+      "player_black_name": "GrandMaitre_Rabe",
+      "player_white_isa": 1200,
+      "player_black_isa": 1850,
+      "winner": null,
+      "time_control": 300,
+      "current_turn": "white",
+      "turn_number": 2,
+      "started_at": "2026-09-11T17:46:01.958Z",
+      "finished_at": null,
+      "game_state": {
+        "board": [
+          [
+            {
+              "id": "black-b1",
+              "player": "black"
+            },
+            {
+              "id": "black-b2",
+              "player": "black"
+            },
+            {
+              "id": "black-b3",
+              "player": "black"
+            },
+            {
+              "id": "black-b4",
+              "player": "black"
+            },
+            {
+              "id": "black-b5",
+              "player": "black"
+            },
+            {
+              "id": "black-b6",
+              "player": "black"
+            },
+            {
+              "id": "black-b7",
+              "player": "black"
+            },
+            {
+              "id": "black-b8",
+              "player": "black"
+            },
+            {
+              "id": "black-b9",
+              "player": "black"
+            }
+          ],
+          [
+            {
+              "id": "black-b10",
+              "player": "black"
+            },
+            {
+              "id": "black-b11",
+              "player": "black"
+            },
+            {
+              "id": "black-b12",
+              "player": "black"
+            },
+            {
+              "id": "black-b13",
+              "player": "black"
+            },
+            {
+              "id": "black-b14",
+              "player": "black"
+            },
+            null,
+            {
+              "id": "black-b16",
+              "player": "black"
+            },
+            {
+              "id": "black-b17",
+              "player": "black"
+            },
+            {
+              "id": "black-b18",
+              "player": "black"
+            }
+          ],
+          [
+            {
+              "id": "black-b19",
+              "player": "black"
+            },
+            {
+              "id": "white-w1",
+              "player": "white"
+            },
+            {
+              "id": "black-b20",
+              "player": "black"
+            },
+            null,
+            {
+              "id": "white-w2",
+              "player": "white"
+            },
+            {
+              "id": "black-b15",
+              "player": "black"
+            },
+            {
+              "id": "white-w3",
+              "player": "white"
+            },
+            {
+              "id": "black-b22",
+              "player": "black"
+            },
+            {
+              "id": "white-w4",
+              "player": "white"
+            }
+          ],
+          [
+            {
+              "id": "white-w5",
+              "player": "white"
+            },
+            {
+              "id": "white-w6",
+              "player": "white"
+            },
+            {
+              "id": "white-w7",
+              "player": "white"
+            },
+            {
+              "id": "white-w8",
+              "player": "white"
+            },
+            {
+              "id": "white-w9",
+              "player": "white"
+            },
+            null,
+            {
+              "id": "white-w11",
+              "player": "white"
+            },
+            {
+              "id": "white-w12",
+              "player": "white"
+            },
+            {
+              "id": "white-w13",
+              "player": "white"
+            }
+          ],
+          [
+            {
+              "id": "white-w14",
+              "player": "white"
+            },
+            {
+              "id": "white-w15",
+              "player": "white"
+            },
+            {
+              "id": "white-w16",
+              "player": "white"
+            },
+            {
+              "id": "white-w17",
+              "player": "white"
+            },
+            {
+              "id": "white-w18",
+              "player": "white"
+            },
+            null,
+            {
+              "id": "white-w20",
+              "player": "white"
+            },
+            {
+              "id": "white-w21",
+              "player": "white"
+            },
+            {
+              "id": "white-w22",
+              "player": "white"
+            }
+          ]
+        ],
+        "currentPlayer": "white",
+        "selectedPosition": null,
+        "legalMoves": [
+          {
+            "from": {
+              "row": 2,
+              "col": 4
+            },
+            "to": {
+              "row": 2,
+              "col": 3
+            },
+            "captures": [
+              {
+                "row": 2,
+                "col": 2
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": 0,
+              "col": -1
+            }
+          },
+          {
+            "from": {
+              "row": 2,
+              "col": 4
+            },
+            "to": {
+              "row": 2,
+              "col": 3
+            },
+            "captures": [
+              {
+                "row": 2,
+                "col": 5
+              }
+            ],
+            "captureType": "withdrawal",
+            "direction": {
+              "row": 0,
+              "col": -1
+            }
+          },
+          {
+            "from": {
+              "row": 2,
+              "col": 4
+            },
+            "to": {
+              "row": 1,
+              "col": 5
+            },
+            "captures": [
+              {
+                "row": 0,
+                "col": 6
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": -1,
+              "col": 1
+            }
+          },
+          {
+            "from": {
+              "row": 2,
+              "col": 4
+            },
+            "to": {
+              "row": 3,
+              "col": 5
+            },
+            "captures": [
+              {
+                "row": 1,
+                "col": 3
+              },
+              {
+                "row": 0,
+                "col": 2
+              }
+            ],
+            "captureType": "withdrawal",
+            "direction": {
+              "row": 1,
+              "col": 1
+            }
+          },
+          {
+            "from": {
+              "row": 2,
+              "col": 6
+            },
+            "to": {
+              "row": 1,
+              "col": 5
+            },
+            "captures": [
+              {
+                "row": 0,
+                "col": 4
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": -1,
+              "col": -1
+            }
+          },
+          {
+            "from": {
+              "row": 2,
+              "col": 6
+            },
+            "to": {
+              "row": 3,
+              "col": 5
+            },
+            "captures": [
+              {
+                "row": 1,
+                "col": 7
+              },
+              {
+                "row": 0,
+                "col": 8
+              }
+            ],
+            "captureType": "withdrawal",
+            "direction": {
+              "row": 1,
+              "col": -1
+            }
+          },
+          {
+            "from": {
+              "row": 3,
+              "col": 3
+            },
+            "to": {
+              "row": 2,
+              "col": 3
+            },
+            "captures": [
+              {
+                "row": 1,
+                "col": 3
+              },
+              {
+                "row": 0,
+                "col": 3
+              }
+            ],
+            "captureType": "approach",
+            "direction": {
+              "row": -1,
+              "col": 0
+            }
+          }
+        ],
+        "captureSequence": null,
+        "moveHistory": [
+          {
+            "id": "move-1789148762012-mloi",
+            "turnNumber": 1,
+            "player": "white",
+            "from": {
+              "row": 2,
+              "col": 3
+            },
+            "to": {
+              "row": 2,
+              "col": 4
+            },
+            "captures": [
+              {
+                "row": 2,
+                "col": 5
+              }
+            ],
+            "captureType": "approach",
+            "notation": "D3 → E3 (Appr. +1)",
+            "timestamp": 1789148762012,
+            "isSubsequentCapture": false
+          },
+          {
+            "id": "move-1789148762624-uqs2",
+            "turnNumber": 1,
+            "player": "black",
+            "from": {
+              "row": 1,
+              "col": 5
+            },
+            "to": {
+              "row": 2,
+              "col": 5
+            },
+            "captures": [
+              {
+                "row": 3,
+                "col": 5
+              },
+              {
+                "row": 4,
+                "col": 5
+              }
+            ],
+            "captureType": "approach",
+            "notation": "F4 → F3 (Appr. +2)",
+            "timestamp": 1789148762624,
+            "isSubsequentCapture": false
+          }
+        ],
+        "capturedPieces": {
+          "white": 2,
+          "black": 1
+        },
+        "status": "playing",
+        "winner": null,
+        "gameMode": "multiplayer",
+        "difficulty": "medium",
+        "turnNumber": 2,
+        "multiplayerGameId": "game_1789148761957_qkrr",
+        "mandatoryCaptureActive": true
+      },
+      "moves": [
+        {
+          "id": "mv_1789148762013_7nn",
+          "game_id": "game_1789148761957_qkrr",
+          "move_number": 1,
+          "player": "white",
+          "from_position": {
+            "row": 2,
+            "col": 3
+          },
+          "to_position": {
+            "row": 2,
+            "col": 4
+          },
+          "captured_positions": [
+            {
+              "row": 2,
+              "col": 5
+            }
+          ],
+          "capture_type": "approach",
+          "created_at": "2026-09-11T17:46:02.013Z"
+        },
+        {
+          "id": "mv_1789148762624_ddh",
+          "game_id": "game_1789148761957_qkrr",
+          "move_number": 2,
+          "player": "black",
+          "from_position": {
+            "row": 1,
+            "col": 5
+          },
+          "to_position": {
+            "row": 2,
+            "col": 5
+          },
+          "captured_positions": [
+            {
+              "row": 3,
+              "col": 5
+            },
+            {
+              "row": 4,
+              "col": 5
+            }
+          ],
+          "capture_type": "approach",
+          "created_at": "2026-09-11T17:46:02.624Z"
+        }
+      ]
+    }
+  ],
+  "notifications": [],
+  "ratingHistories": {}
+}

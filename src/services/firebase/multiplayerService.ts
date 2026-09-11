@@ -356,16 +356,23 @@ export function subscribeToGameSession(
   const path = `games/${gameId}`;
 
   try {
-    const unsubscribe = onSnapshot(doc(db, path), (snapshot) => {
-      if (snapshot.exists()) {
-        callback(snapshot.data() as MultiplayerGameSession);
-      } else {
-        callback(null);
+    const unsubscribe = onSnapshot(
+      doc(db, path),
+      (snapshot) => {
+        if (snapshot.exists()) {
+          callback(snapshot.data() as MultiplayerGameSession);
+        } else {
+          callback(null);
+        }
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, path);
       }
-    });
+    );
     return unsubscribe;
   } catch (error) {
-    handleFirestoreError(error, OperationType.GET, path);
+    console.warn("Could not subscribe to game session:", error);
+    return () => {};
   }
 }
 
@@ -463,13 +470,19 @@ export function subscribeToNotifications(
 
   try {
     const q = query(collection(db, path), orderBy("createdAt", "desc"));
-    const unsubscribe = onSnapshot(q, (snapshot) => {
-      const notifications: NotificationPayload[] = [];
-      snapshot.forEach((d) => {
-        notifications.push(d.data() as NotificationPayload);
-      });
-      callback(notifications);
-    });
+    const unsubscribe = onSnapshot(
+      q,
+      (snapshot) => {
+        const notifications: NotificationPayload[] = [];
+        snapshot.forEach((d) => {
+          notifications.push(d.data() as NotificationPayload);
+        });
+        callback(notifications);
+      },
+      (error) => {
+        handleFirestoreError(error, OperationType.GET, path);
+      }
+    );
     return unsubscribe;
   } catch (error) {
     console.warn("Could not subscribe to notifications:", error);

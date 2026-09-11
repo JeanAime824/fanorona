@@ -107,12 +107,20 @@ export function handleFirestoreError(
 export async function testConnection(): Promise<void> {
   try {
     await getDocFromServer(doc(db, "test", "connection"));
-  } catch (error) {
+  } catch (error: any) {
     if (
       error instanceof Error &&
       error.message.includes("the client is offline")
     ) {
       console.error("Please check your Firebase configuration.");
+    } else if (
+      error?.message?.includes("Database '(default)' not found") ||
+      error?.code === "not-found"
+    ) {
+      console.warn(
+        `[Firebase] Base de données Firestore '(default)' non provisionnée dans le projet '${firebaseConfig.projectId}'. ` +
+        `Rendez-vous dans la console Firebase pour créer la base Firestore.`
+      );
     }
   }
 }

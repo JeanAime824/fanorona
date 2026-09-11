@@ -123,10 +123,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           try {
             setUser(JSON.parse(saved));
           } catch {
-            setUser(null);
+            await signInAsGuest();
           }
         } else {
-          setUser(null);
+          await signInAsGuest();
         }
       }
     } catch {
@@ -135,8 +135,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         try {
           setUser(JSON.parse(saved));
         } catch {
-          setUser(null);
+          await signInAsGuest();
         }
+      } else {
+        await signInAsGuest();
       }
     } finally {
       setLoading(false);

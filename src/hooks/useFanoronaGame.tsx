@@ -259,7 +259,10 @@ export function useFanoronaGameEngine() {
       aiColor: Player = "black",
       speedMode?: boolean,
       timeLimit?: number,
-      multiplayerGameId?: string
+      multiplayerGameId?: string,
+      onlinePlayerColor?: Player,
+      opponentName?: string,
+      opponentIsa?: number
     ) => {
       if (speedMode !== undefined || timeLimit !== undefined) {
         setSettings((prev) => {
@@ -277,6 +280,11 @@ export function useFanoronaGameEngine() {
         }
       }
       const newGame = createInitialGame(mode, diff, aiColor, multiplayerGameId);
+      if (mode === "multiplayer") {
+        newGame.onlinePlayerColor = onlinePlayerColor || (aiColor === "white" ? "black" : "white");
+        newGame.opponentName = opponentName;
+        newGame.opponentIsa = opponentIsa;
+      }
       historyManagerRef.current.reset();
       setPendingChoice(null);
       setIsAiThinking(false);
@@ -335,6 +343,15 @@ export function useFanoronaGameEngine() {
       if (
         gameState.gameMode === "ai" &&
         gameState.currentPlayer === gameState.aiPlayerColor
+      ) {
+        return;
+      }
+
+      // In online multiplayer mode, prevent player from moving when it's not their turn
+      if (
+        gameState.gameMode === "multiplayer" &&
+        gameState.onlinePlayerColor &&
+        gameState.currentPlayer !== gameState.onlinePlayerColor
       ) {
         return;
       }
@@ -551,6 +568,9 @@ export function useFanoronaGameEngine() {
             ...nextState,
             gameMode: "multiplayer",
             multiplayerGameId: gId,
+            onlinePlayerColor: prev.onlinePlayerColor,
+            opponentName: prev.opponentName,
+            opponentIsa: prev.opponentIsa,
           }));
           updateHistoryState();
           if (move?.captures?.length > 0) {
@@ -567,6 +587,9 @@ export function useFanoronaGameEngine() {
             ...nextState,
             gameMode: "multiplayer",
             multiplayerGameId: gId,
+            onlinePlayerColor: prev.onlinePlayerColor,
+            opponentName: prev.opponentName,
+            opponentIsa: prev.opponentIsa,
           }));
           updateHistoryState();
           sound.playSelect();
@@ -586,20 +609,40 @@ export function useFanoronaGameEngine() {
       const handleGameRoomState = (serverGame: any) => {
         if (serverGame && serverGame.game_state) {
           setGameState((prev) => {
-            if (
-              serverGame.game_state.turnNumber !== prev.turnNumber ||
-              serverGame.game_state.currentPlayer !== prev.currentPlayer ||
-              serverGame.status === "finished"
-            ) {
-              return {
-                ...serverGame.game_state,
-                gameMode: "multiplayer",
-                multiplayerGameId: gId,
-                status: serverGame.status === "finished" ? "game_over" : serverGame.game_state.status,
-                winner: serverGame.winner || serverGame.game_state.winner,
-              };
+            const isFinished = serverGame.status === "finished";
+            const newStatus = isFinished ? "game_over" : serverGame.game_state.status;
+            const newWinner = serverGame.winner || serverGame.game_state.winner;
+
+            // Determine our color if not set
+            let ourColor = prev.onlinePlayerColor;
+            let myUserId = "";
+            try {
+              const savedUser = localStorage.getItem("fanorona_custom_user");
+              if (savedUser) myUserId = JSON.parse(savedUser).id;
+            } catch {}
+
+            if (myUserId) {
+              if (serverGame.player_white_id === myUserId) ourColor = "white";
+              else if (serverGame.player_black_id === myUserId) ourColor = "black";
             }
-            return prev;
+
+            const opponentName = ourColor === "white"
+              ? serverGame.player_black_name
+              : serverGame.player_white_name;
+            const opponentIsa = ourColor === "white"
+              ? serverGame.player_black_isa
+              : serverGame.player_white_isa;
+
+            return {
+              ...serverGame.game_state,
+              gameMode: "multiplayer",
+              multiplayerGameId: gId,
+              onlinePlayerColor: ourColor,
+              opponentName: opponentName || prev.opponentName,
+              opponentIsa: opponentIsa || prev.opponentIsa,
+              status: newStatus,
+              winner: newWinner,
+            };
           });
           updateHistoryState();
         }
