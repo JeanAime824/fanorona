@@ -253,9 +253,59 @@ function calculateIsaChange(playerIsa: number, opponentIsa: number, result: 1 | 
   return change;
 }
 
-// No dummy/virtual users - leaderboard only uses real registered players
+const DB_FILE = path.join(process.cwd(), "fanorona_db.json");
+
+function persistDb() {
+  try {
+    const data = {
+      users: Array.from(users.values()),
+      friendships: Array.from(friendships.values()),
+      friendRequests: Array.from(friendRequests.values()),
+      ratingHistories: Array.from(ratingHistories.entries()),
+    };
+    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
+  } catch (err) {
+    console.warn("[DB] Failed to persist database to file:", err);
+  }
+}
+
+function loadPersistedDb() {
+  try {
+    if (fs.existsSync(DB_FILE)) {
+      const raw = fs.readFileSync(DB_FILE, "utf-8");
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.users)) {
+        for (const u of data.users) {
+          users.set(u.id, u);
+          usersByPlayerId.set(u.player_id.toUpperCase(), u);
+          usersByUsername.set(u.username.toLowerCase(), u);
+        }
+      }
+      if (Array.isArray(data.friendships)) {
+        for (const f of data.friendships) {
+          friendships.set(f.id, f);
+        }
+      }
+      if (Array.isArray(data.friendRequests)) {
+        for (const r of data.friendRequests) {
+          friendRequests.set(r.id, r);
+        }
+      }
+      if (Array.isArray(data.ratingHistories)) {
+        for (const [uid, entries] of data.ratingHistories) {
+          ratingHistories.set(uid, entries);
+        }
+      }
+      console.log(`[DB] Loaded ${users.size} persisted players from ${DB_FILE}`);
+    }
+  } catch (err) {
+    console.warn("[DB] Failed to load persisted database:", err);
+  }
+}
+
+// Real registered players persisted to disk
 function seedDefaultData() {
-  // Empty seed to ensure 100% real user data
+  loadPersistedDb();
 }
 
 seedDefaultData();
@@ -359,6 +409,7 @@ async function startServer() {
         users.set(userId, user);
         usersByPlayerId.set(playerId, user);
         usersByUsername.set(lowerUsername, user);
+        persistDb();
       }
 
       (req as any).user = user;
@@ -461,6 +512,7 @@ async function startServer() {
           created_at: newUser.created_at,
         },
       ]);
+      persistDb();
 
       const token = jwt.sign({ userId, username: cleanUsername }, JWT_SECRET, {
         expiresIn: JWT_EXPIRES_IN,
@@ -632,6 +684,8 @@ async function startServer() {
         usersByUsername.set(user.username.toLowerCase(), user);
       }
 
+      persistDb();
+
       const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, {
         expiresIn: JWT_EXPIRES_IN,
       });
@@ -727,49 +781,76 @@ async function startServer() {
   // ==========================================
 
   app.get(["/api/users/search", "/api/users/search/"], optionalJwt, (req: Request, res: Response) => {
-    const q = ((req.query.q as string) || "").trim();
+    const rawQ = ((req.query.q as string) || "").trim();
     const currentUser = (req as any).user as UserDbRecord | undefined;
     const currentUserId = currentUser?.id;
-    const upperQuery = q.toUpperCase();
-    const lowerQuery = q.toLowerCase();
 
     const matches: any[] = [];
+    const addedIds = new Set<string>();
 
-    if (!q) {
-      // Return all active registered players when query is empty
+    if (!rawQ) {
+      // Return all active registered players when query is empty (excluding self from friend suggestions)
       for (const u of users.values()) {
         if (u.id === currentUserId) continue;
         matches.push(buildSearchResult(u, currentUserId));
-        if (matches.length >= 20) break;
+        addedIds.add(u.id);
+        if (matches.length >= 25) break;
       }
       return res.json(matches);
     }
 
-    // 1. Direct match on 6-character player_id (highest priority)
-    const exactIdUser = usersByPlayerId.get(upperQuery);
-    if (exactIdUser && exactIdUser.id !== currentUserId) {
-      matches.push(buildSearchResult(exactIdUser, currentUserId));
+    const cleanId = rawQ.toUpperCase().replace(/[^A-Z0-9]/g, "");
+    const lowerQuery = rawQ.toLowerCase();
+
+    // 1. Direct match on 6-character player_id (highest priority, including self if searched)
+    if (cleanId.length >= 2) {
+      const exactIdUser = usersByPlayerId.get(cleanId);
+      if (exactIdUser) {
+        matches.push(buildSearchResult(exactIdUser, currentUserId));
+        addedIds.add(exactIdUser.id);
+      }
     }
 
-    // 2. Partial match on username, player_id, or email
+    // 2. Exact username match
+    const exactUsernameUser = usersByUsername.get(lowerQuery);
+    if (exactUsernameUser && !addedIds.has(exactUsernameUser.id)) {
+      matches.push(buildSearchResult(exactUsernameUser, currentUserId));
+      addedIds.add(exactUsernameUser.id);
+    }
+
+    // 3. Partial match on username, player_id, or email
     for (const u of users.values()) {
-      if (u.id === currentUserId || (exactIdUser && u.id === exactIdUser.id)) continue;
+      if (addedIds.has(u.id)) continue;
+      const uPid = (u.player_id || "").toUpperCase();
+      const uName = (u.username || "").toLowerCase();
+      const uEmail = (u.email || "").toLowerCase();
+
       if (
-        u.username.toLowerCase().includes(lowerQuery) ||
-        u.player_id.includes(upperQuery) ||
-        u.email.toLowerCase().includes(lowerQuery)
+        (cleanId.length >= 2 && uPid.includes(cleanId)) ||
+        uName.includes(lowerQuery) ||
+        uEmail.includes(lowerQuery)
       ) {
         matches.push(buildSearchResult(u, currentUserId));
+        addedIds.add(u.id);
       }
-      if (matches.length >= 20) break;
+      if (matches.length >= 25) break;
     }
 
     res.json(matches);
   });
 
   function buildSearchResult(targetUser: UserDbRecord, currentUserId?: string) {
-    let relationStatus: "none" | "pending_sent" | "pending_received" | "friends" = "none";
+    let relationStatus: "none" | "pending_sent" | "pending_received" | "friends" | "self" = "none";
     let friendRequestId: string | undefined;
+
+    if (currentUserId && targetUser.id === currentUserId) {
+      return {
+        ...toPublicProfile(targetUser),
+        relation_status: "self" as const,
+        friend_request_id: undefined,
+        is_self: true,
+      };
+    }
 
     if (currentUserId) {
       // Check friendship
@@ -799,6 +880,7 @@ async function startServer() {
       ...toPublicProfile(targetUser),
       relation_status: relationStatus,
       friend_request_id: friendRequestId,
+      is_self: false,
     };
   }
 

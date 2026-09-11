@@ -69,6 +69,22 @@ export interface FriendRequestItem {
   updated_at?: string;
 }
 
+export interface ChallengeItem {
+  id: string;
+  sender_id: string;
+  sender: UserProfile;
+  receiver_id: string;
+  receiver: UserProfile;
+  time_control: number; // in seconds (60, 180, 300, 600, etc.)
+  game_type: "ranked" | "casual";
+  player_color: "white" | "black" | "random";
+  game_id: string;
+  game_code: string;
+  status: "pending" | "accepted" | "declined" | "cancelled" | "expired";
+  created_at: string;
+  updated_at?: string;
+}
+
 export interface FriendshipItem {
   id: string;
   user: UserProfile;

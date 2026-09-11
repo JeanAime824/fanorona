@@ -19,6 +19,8 @@ import {
   Shield,
   AlertCircle,
   RefreshCw,
+  Copy,
+  Share2,
 } from "lucide-react";
 import { useAuth } from "../context/AuthContext";
 import { api } from "../services/api";
@@ -201,10 +203,7 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
         </p>
         <div className="flex justify-center gap-3 pt-2">
           <Button variant="primary" size="md" onClick={() => onNavigate("connexion")}>
-            Se connecter
-          </Button>
-          <Button variant="ghost" size="md" onClick={() => onNavigate("inscription")}>
-            Créer un compte
+            Se connecter avec Google
           </Button>
         </div>
       </div>
@@ -543,6 +542,38 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
       {/* TAB 3: SEARCH FOR PLAYERS */}
       {activeTab === "search" && (
         <div className="space-y-4">
+          {/* User's own Player ID banner */}
+          {user && (
+            <div className="p-3.5 rounded-xl bg-gradient-to-r from-[#211E1A] to-[#1A1815] border border-[#C8A452]/20 flex flex-wrap items-center justify-between gap-3 shadow-md">
+              <div className="flex items-center gap-2.5">
+                <div className="w-9 h-9 rounded-lg bg-[#C8A452]/10 border border-[#C8A452]/30 flex items-center justify-center text-[#C8A452]">
+                  <Share2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-[11px] font-medium text-[#9E9890]">Votre identifiant joueur à partager</div>
+                  <div className="text-sm font-mono font-bold text-[#F5F3EE] tracking-wider flex items-center gap-1.5">
+                    #{user.player_id}
+                    <span className="text-[10px] font-sans font-normal text-[#C8A452] bg-[#C8A452]/10 px-1.5 py-0.5 rounded">
+                      6 chiffres
+                    </span>
+                  </div>
+                </div>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => {
+                  navigator.clipboard.writeText(user.player_id);
+                  setActionMessage("Identifiant copié dans le presse-papier !");
+                  setTimeout(() => setActionMessage(null), 3000);
+                }}
+              >
+                <Copy className="w-3.5 h-3.5 mr-1" />
+                Copier mon ID
+              </Button>
+            </div>
+          )}
+
           <div className="relative">
             <input
               type="text"
@@ -614,7 +645,12 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
                       Profil
                     </Button>
 
-                    {player.relation_status === "friends" ? (
+                    {player.relation_status === "self" || player.id === user?.id ? (
+                      <div className="px-3 py-1.5 rounded-xl bg-[#C8A452]/10 text-[#C8A452] text-xs font-semibold flex items-center gap-1">
+                        <Check className="w-3.5 h-3.5" />
+                        <span>Vous</span>
+                      </div>
+                    ) : player.relation_status === "friends" ? (
                       <div className="px-3 py-1.5 rounded-xl bg-emerald-500/10 text-emerald-400 text-xs font-semibold flex items-center gap-1">
                         <Check className="w-3.5 h-3.5" />
                         <span>Amis</span>
@@ -648,9 +684,17 @@ export const FriendsPage: React.FC<FriendsPageProps> = ({
             </div>
           ) : searchQuery.trim() ? (
             <div className="p-8 text-center text-xs text-[#9E9890] bg-[#141210] rounded-xl border border-white/[0.08]">
-              Aucun joueur trouvé pour "{searchQuery}". Vérifiez le pseudo ou l'ID.
+              Aucun joueur trouvé pour "{searchQuery}". Vérifiez le pseudo ou l'ID (ex: #{user?.player_id || "849201"}).
             </div>
-          ) : null}
+          ) : (
+            <div className="p-8 text-center bg-[#141210] rounded-xl border border-white/[0.08] flex flex-col items-center gap-2">
+              <Users className="w-8 h-8 text-[#C8A452]/50 mb-1" />
+              <div className="text-sm font-semibold text-[#F5F3EE]">Rechercher des joueurs</div>
+              <p className="text-xs text-[#9E9890] max-w-sm">
+                Entrez le pseudo, l'email ou l'identifiant à 6 chiffres d'un autre joueur pour l'ajouter à vos amis et jouer ensemble.
+              </p>
+            </div>
+          )}
         </div>
       )}
 

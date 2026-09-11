@@ -47,29 +47,79 @@ export interface CloudUserStats {
 }
 
 /**
- * Save user profile upon successful Google authentication
+ * Save user profile upon successful authentication
  */
 export async function syncUserProfile(
   uid: string,
   email: string,
   displayName: string,
-  photoURL?: string
+  photoURL?: string,
+  playerId?: string,
+  extra?: { isa?: number; gamesPlayed?: number; winRate?: number; username?: string }
 ): Promise<void> {
   const path = `users/${uid}`;
   try {
-    await setDoc(
-      doc(db, path),
-      {
-        id: uid,
-        email: email || "unknown@example.com",
-        displayName: displayName || "Joueur Fanorona",
-        photoURL: photoURL || "",
-        updatedAt: new Date().toISOString(),
-      },
-      { merge: true }
-    );
+    const payload: Record<string, any> = {
+      id: uid,
+      email: email || "unknown@example.com",
+      displayName: displayName || "Joueur Fanorona",
+      username: extra?.username || displayName || "Joueur Fanorona",
+      photoURL: photoURL || "",
+      updatedAt: new Date().toISOString(),
+    };
+    if (playerId) payload.player_id = playerId;
+    if (typeof extra?.isa === "number") payload.isa = extra.isa;
+    if (typeof extra?.gamesPlayed === "number") payload.games_played = extra.gamesPlayed;
+    if (typeof extra?.winRate === "number") payload.win_rate = extra.winRate;
+
+    await setDoc(doc(db, path), payload, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Search registered players in Firestore (fallback when backend is unavailable)
+ */
+export async function searchFirestoreUsers(searchQuery: string): Promise<any[]> {
+  try {
+    const usersRef = collection(db, "users");
+    const snap = await getDocs(query(usersRef, limit(40)));
+    const q = searchQuery.trim().toLowerCase();
+    const cleanId = searchQuery.trim().toUpperCase().replace(/[^A-Z0-9]/g, "");
+
+    const matches: any[] = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      const uname = (data.username || data.displayName || "").toLowerCase();
+      const uemail = (data.email || "").toLowerCase();
+      const upid = (data.player_id || "").toUpperCase();
+
+      if (!q) {
+        matches.push(data);
+      } else if (
+        (cleanId.length >= 2 && upid.includes(cleanId)) ||
+        uname.includes(q) ||
+        uemail.includes(q)
+      ) {
+        matches.push(data);
+      }
+    });
+
+    return matches.map((u) => ({
+      id: u.id,
+      username: u.username || u.displayName || "Joueur Fanorona",
+      email: u.email || "",
+      player_id: u.player_id || u.id.substring(0, 6).toUpperCase(),
+      isa: u.isa || 1500,
+      games_played: u.games_played || 0,
+      win_rate: u.win_rate || 50,
+      avatar_url: u.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(u.username || u.displayName || u.id)}`,
+      relation_status: "none",
+    }));
+  } catch (err) {
+    console.warn("[searchFirestoreUsers] Firestore lookup skipped:", err);
+    return [];
   }
 }
 

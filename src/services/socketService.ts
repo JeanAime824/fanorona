@@ -171,6 +171,69 @@ class SocketService {
     socket.on("chat_message", callback);
   }
 
+  public offerDraw(gameId: string, player: Player) {
+    const socket = this.connect();
+    socket.emit("offer_draw", { gameId, player });
+  }
+
+  public acceptDraw(gameId: string) {
+    const socket = this.connect();
+    socket.emit("accept_draw", { gameId });
+  }
+
+  public joinGameRoom(gameId: string, playerInfo: { id: string; username: string }) {
+    const socket = this.connect();
+    socket.emit("join_game_room", { gameId, playerInfo });
+  }
+
+  public onGameRoomState(callback: (serverGame: any) => void) {
+    const socket = this.connect();
+    socket.off("game_room_state");
+    socket.on("game_room_state", callback);
+  }
+
+  public onClockTick(callback: (clocks: { white: number; black: number }) => void) {
+    const socket = this.connect();
+    socket.off("clock_tick");
+    socket.on("clock_tick", callback);
+  }
+
+  public onMoveMade(callback: (data: any) => void) {
+    const socket = this.connect();
+    socket.off("move_made");
+    socket.on("move_made", callback);
+  }
+
+  public onGameOver(callback: (data: any) => void) {
+    const socket = this.connect();
+    socket.off("game_over");
+    socket.on("game_over", callback);
+  }
+
+  public onDrawOffered(callback: (data: { offeredBy: Player }) => void) {
+    const socket = this.connect();
+    socket.off("draw_offered");
+    socket.on("draw_offered", callback);
+  }
+
+  public onChallengeReceived(callback: (data: any) => void) {
+    const socket = this.connect();
+    socket.off("challenge_received");
+    socket.on("challenge_received", callback);
+  }
+
+  public onChallengeDeclined(callback: (data: any) => void) {
+    const socket = this.connect();
+    socket.off("challenge_declined");
+    socket.on("challenge_declined", callback);
+  }
+
+  public onChallengeCancelled(callback: (data: any) => void) {
+    const socket = this.connect();
+    socket.off("challenge_cancelled");
+    socket.on("challenge_cancelled", callback);
+  }
+
   public async addServerFriend(userId: string, targetUserId: string) {
     const res = await fetch(`${SOCKET_SERVER_URL}/api/friends/request`, {
       method: "POST",

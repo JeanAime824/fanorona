@@ -20,15 +20,11 @@ service cloud.firestore {
 
     // User Profile
     match /users/{userId} {
-      allow get: if isValidId(userId) && isOwner(userId);
-      allow list: if false;
+      allow get, list: if isSignedIn();
       allow create: if isValidId(userId) && isOwner(userId)
-        && request.resource.data.id == userId
-        && request.resource.data.email is string
-        && request.resource.data.displayName is string;
+        && request.resource.data.id == userId;
       allow update: if isValidId(userId) && isOwner(userId)
-        && request.resource.data.id == userId
-        && request.resource.data.email == resource.data.email;
+        && request.resource.data.id == userId;
       allow delete: if false;
 
       // Cumulative Stats and synced settings

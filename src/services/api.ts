@@ -296,11 +296,28 @@ export const api = {
           cache: "no-store",
         }
       );
-      if (!res.ok) return [];
-      return await safeFetchJson<UserSearchResult[]>(res);
+      if (res.ok) {
+        const results = await safeFetchJson<UserSearchResult[]>(res);
+        if (Array.isArray(results) && results.length > 0) {
+          return results;
+        }
+      }
     } catch {
-      return [];
+      // Backend error or unreachable, proceed to Firestore fallback
     }
+
+    // Firestore fallback for search across all clients (especially on Vercel)
+    try {
+      const { searchFirestoreUsers } = await import("./firebase/syncService");
+      const firestoreUsers = await searchFirestoreUsers(query);
+      if (Array.isArray(firestoreUsers) && firestoreUsers.length > 0) {
+        return firestoreUsers;
+      }
+    } catch (err) {
+      console.warn("[searchUsers] Firestore search fallback error:", err);
+    }
+
+    return [];
   },
 
   async getCommunityUsers(): Promise<UserSearchResult[]> {
@@ -321,11 +338,30 @@ export const api = {
       const res = await resilientFetch(`${API_BASE_URL}/api/users/${encodeURIComponent(playerId)}`, {
         headers: getAuthHeaders(),
       });
-      if (!res.ok) return null;
-      return await safeFetchJson<UserSearchResult>(res);
+      if (res.ok) {
+        return await safeFetchJson<UserSearchResult>(res);
+      }
     } catch {
-      return null;
+      // Backend error
     }
+
+    // Firestore fallback
+    try {
+      const { searchFirestoreUsers } = await import("./firebase/syncService");
+      const list = await searchFirestoreUsers(playerId);
+      const cleanTarget = playerId.trim().toUpperCase();
+      const found = list.find(
+        (u) =>
+          u.player_id.toUpperCase() === cleanTarget ||
+          u.id === playerId ||
+          u.username.toLowerCase() === playerId.toLowerCase()
+      );
+      if (found) return found;
+    } catch {
+      // Ignore
+    }
+
+    return null;
   },
 
   // Leaderboard
@@ -436,13 +472,21 @@ export const api = {
   },
 
   // Challenges
-  async sendChallenge(params: { target_user_id?: string; player_id?: string; game_type?: string; time_control?: number }) {
+  async sendChallenge(params: { target_user_id?: string; player_id?: string; game_type?: string; time_control?: number; player_color?: string }) {
     const res = await resilientFetch(`${API_BASE_URL}/api/challenges/send`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(params),
     });
     return safeFetchJson(res, "Impossible d'envoyer l'invitation");
+  },
+
+  async cancelChallenge(inviteId: string) {
+    const res = await resilientFetch(`${API_BASE_URL}/api/challenges/${inviteId}/cancel`, {
+      method: "POST",
+      headers: getAuthHeaders(),
+    });
+    return safeFetchJson(res, "Impossible d'annuler le défi");
   },
 
   async acceptChallenge(inviteId: string) {

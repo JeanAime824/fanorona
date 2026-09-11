@@ -280,6 +280,71 @@ class SoundSynthesizer {
       }
     });
   }
+
+  /**
+   * Ascending bell chime for incoming challenges
+   */
+  public playChallenge(): void {
+    if (!this.soundEnabled) return;
+    queueMicrotask(() => {
+      try {
+        const ctx = this.initContext();
+        if (!ctx) return;
+
+        const notes = [523.25, 659.25, 783.99, 1046.5]; // C5 - E5 - G5 - C6
+        notes.forEach((freq, index) => {
+          const osc = ctx.createOscillator();
+          const gain = ctx.createGain();
+          const startTime = ctx.currentTime + index * 0.08;
+
+          osc.type = "sine";
+          osc.frequency.setValueAtTime(freq, startTime);
+
+          gain.gain.setValueAtTime(0.12, startTime);
+          gain.gain.exponentialRampToValueAtTime(0.001, startTime + 0.35);
+
+          osc.connect(gain);
+          gain.connect(ctx.destination);
+
+          osc.start(startTime);
+          osc.stop(startTime + 0.4);
+        });
+      } catch {
+        // fail silently
+      }
+    });
+  }
+
+  /**
+   * Resonant drum / gong cue when a live multiplayer match commences
+   */
+  public playGameStart(): void {
+    if (!this.soundEnabled) return;
+    queueMicrotask(() => {
+      try {
+        const ctx = this.initContext();
+        if (!ctx) return;
+
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+
+        osc.type = "triangle";
+        osc.frequency.setValueAtTime(440, ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(880, ctx.currentTime + 0.15);
+
+        gain.gain.setValueAtTime(0.18, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+
+        osc.start();
+        osc.stop(ctx.currentTime + 0.45);
+      } catch {
+        // fail silently
+      }
+    });
+  }
 }
 
 export const sound = new SoundSynthesizer();

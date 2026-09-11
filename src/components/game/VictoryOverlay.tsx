@@ -177,8 +177,27 @@ export const VictoryOverlay: React.FC<VictoryOverlayProps> = ({
 
         {/* Reason notice if available */}
         {reason && (
-          <div className="mb-6 p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white/60 italic max-w-md mx-auto">
+          <div className="mb-4 p-2.5 rounded-xl bg-black/40 border border-white/10 text-xs text-white/60 italic max-w-md mx-auto">
             « {reason} »
+          </div>
+        )}
+
+        {/* Multiplayer Isa Rating Delta badge */}
+        {gameState.gameMode === "multiplayer" && gameState.isaChange && (
+          <div className="mb-5 p-3 rounded-2xl bg-gradient-to-r from-[#C8A452]/20 via-[#C8A452]/10 to-[#C8A452]/20 border border-[#C8A452]/40 flex items-center justify-around">
+            <div>
+              <div className="text-[10px] uppercase font-semibold text-white/50 tracking-wider">Joueur Blanc</div>
+              <div className={`font-mono text-base font-bold ${gameState.isaChange.white >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                {gameState.isaChange.white >= 0 ? `+${gameState.isaChange.white}` : gameState.isaChange.white} Isa
+              </div>
+            </div>
+            <div className="h-7 w-px bg-white/10" />
+            <div>
+              <div className="text-[10px] uppercase font-semibold text-white/50 tracking-wider">Joueur Noir</div>
+              <div className={`font-mono text-base font-bold ${gameState.isaChange.black >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+                {gameState.isaChange.black >= 0 ? `+${gameState.isaChange.black}` : gameState.isaChange.black} Isa
+              </div>
+            </div>
           </div>
         )}
 
