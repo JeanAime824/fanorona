@@ -221,6 +221,21 @@ function saveToDisk() {
   }
 }
 
+function clearAllData() {
+  users.clear();
+  usersByPlayerId.clear();
+  usersByUsername.clear();
+  friendships.clear();
+  friendRequests.clear();
+  gameInvitations.clear();
+  games.clear();
+  gamesByCode.clear();
+  notifications.clear();
+  ratingHistories.clear();
+  saveToDisk();
+  console.log("[Storage] Database cleared completely upon administrative reset.");
+}
+
 // Initial restoration from storage
 loadFromDisk();
 
@@ -912,6 +927,12 @@ async function startServer() {
     }
     const currentUser = (req as any).user as UserDbRecord | undefined;
     res.json(buildSearchResult(user, currentUser?.id));
+  });
+
+  // Admin endpoint to clear/reset local database
+  app.post(["/api/admin/clear-db", "/api/admin/clear-db/"], (req: Request, res: Response) => {
+    clearAllData();
+    res.json({ message: "Base de données réinitialisée et vidée avec succès." });
   });
 
   // ==========================================

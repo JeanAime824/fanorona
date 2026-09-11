@@ -181,33 +181,10 @@ class SocketService {
     socket.emit("accept_draw", { gameId });
   }
 
-  public joinGameRoom(gameId: string, playerInfo: { id: string; username: string }) {
-    const socket = this.connect();
-    socket.emit("join_game_room", { gameId, playerInfo });
-  }
-
-  public onGameRoomState(callback: (serverGame: any) => void) {
-    const socket = this.connect();
-    socket.off("game_room_state");
-    socket.on("game_room_state", callback);
-  }
-
   public onClockTick(callback: (clocks: { white: number; black: number }) => void) {
     const socket = this.connect();
     socket.off("clock_tick");
     socket.on("clock_tick", callback);
-  }
-
-  public onMoveMade(callback: (data: any) => void) {
-    const socket = this.connect();
-    socket.off("move_made");
-    socket.on("move_made", callback);
-  }
-
-  public onGameOver(callback: (data: any) => void) {
-    const socket = this.connect();
-    socket.off("game_over");
-    socket.on("game_over", callback);
   }
 
   public onDrawOffered(callback: (data: { offeredBy: Player }) => void) {

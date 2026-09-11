@@ -660,6 +660,30 @@ export function useFanoronaGameEngine() {
 
     setIsAiThinking(true);
 
+    // Realistic thinking delay allowing user to observe AI contemplating its move
+    let thinkingDelay = 1200;
+    if (gameState.captureSequence) {
+      // In multiple capture combo, pause long enough to observe previous capture and animation
+      thinkingDelay = 850;
+    } else {
+      switch (gameState.difficulty) {
+        case "easy":
+          thinkingDelay = 1100;
+          break;
+        case "medium":
+          thinkingDelay = 1600;
+          break;
+        case "hard":
+          thinkingDelay = 2000;
+          break;
+        case "expert":
+          thinkingDelay = 2400;
+          break;
+        default:
+          thinkingDelay = 1400;
+      }
+    }
+
     const timer = setTimeout(() => {
       const decision = chooseBestMove(gameState);
 
@@ -692,7 +716,7 @@ export function useFanoronaGameEngine() {
       }
 
       setIsAiThinking(false);
-    }, 450);
+    }, thinkingDelay);
 
     return () => clearTimeout(timer);
   }, [gameState, updateHistoryState]);

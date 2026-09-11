@@ -321,16 +321,51 @@ export const api = {
   },
 
   async getCommunityUsers(): Promise<UserSearchResult[]> {
+    const combinedMap = new Map<string, UserSearchResult>();
+
+    // 1. Fetch from server backend if available
     try {
       const res = await resilientFetch(`${API_BASE_URL}/api/users/community?_t=${Date.now()}`, {
         headers: getAuthHeaders(),
         cache: "no-store",
       });
-      if (!res.ok) return [];
-      return await safeFetchJson<UserSearchResult[]>(res);
+      if (res.ok) {
+        const serverUsers = await safeFetchJson<UserSearchResult[]>(res);
+        if (Array.isArray(serverUsers)) {
+          for (const u of serverUsers) {
+            combinedMap.set(u.id, u);
+          }
+        }
+      }
     } catch {
-      return [];
+      // Ignore backend fetch errors
     }
+
+    // 2. Fetch from Cloud Firestore (universal cloud database across all players)
+    try {
+      const { getFirestoreCommunityUsers } = await import("./firebase/syncService");
+      const firestoreUsers = await getFirestoreCommunityUsers();
+      if (Array.isArray(firestoreUsers)) {
+        for (const u of firestoreUsers) {
+          if (!combinedMap.has(u.id)) {
+            combinedMap.set(u.id, u);
+          } else {
+            const existing = combinedMap.get(u.id)!;
+            combinedMap.set(u.id, { ...existing, ...u });
+          }
+        }
+      }
+    } catch (err) {
+      console.warn("[getCommunityUsers] Firestore error:", err);
+    }
+
+    return Array.from(combinedMap.values()).sort((a, b) => {
+      const order = { ONLINE: 0, IN_GAME: 1, OFFLINE: 2 };
+      const diff =
+        (order[a.status as keyof typeof order] ?? 2) - (order[b.status as keyof typeof order] ?? 2);
+      if (diff !== 0) return diff;
+      return (b.isa || 1200) - (a.isa || 1200);
+    });
   },
 
   async getPublicProfile(playerId: string): Promise<UserSearchResult | null> {

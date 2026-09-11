@@ -55,7 +55,7 @@ export async function syncUserProfile(
   displayName: string,
   photoURL?: string,
   playerId?: string,
-  extra?: { isa?: number; gamesPlayed?: number; winRate?: number; username?: string }
+  extra?: { isa?: number; gamesPlayed?: number; winRate?: number; username?: string; status?: string }
 ): Promise<void> {
   const path = `users/${uid}`;
   try {
@@ -65,6 +65,7 @@ export async function syncUserProfile(
       displayName: displayName || "Joueur Fanorona",
       username: extra?.username || displayName || "Joueur Fanorona",
       photoURL: photoURL || "",
+      status: extra?.status || "ONLINE",
       updatedAt: new Date().toISOString(),
     };
     if (playerId) payload.player_id = playerId;
@@ -75,6 +76,36 @@ export async function syncUserProfile(
     await setDoc(doc(db, path), payload, { merge: true });
   } catch (error) {
     handleFirestoreError(error, OperationType.WRITE, path);
+  }
+}
+
+/**
+ * Retrieve all registered community players from Cloud Firestore
+ */
+export async function getFirestoreCommunityUsers(): Promise<any[]> {
+  try {
+    const usersRef = collection(db, "users");
+    const snap = await getDocs(query(usersRef, limit(100)));
+    const list: any[] = [];
+    snap.forEach((docSnap) => {
+      const data = docSnap.data();
+      list.push({
+        id: data.id || docSnap.id,
+        username: data.username || data.displayName || "Joueur Fanorona",
+        email: data.email || "",
+        player_id: data.player_id || (data.id || docSnap.id).substring(0, 6).toUpperCase(),
+        isa: data.isa || 1200,
+        games_played: data.games_played || 0,
+        win_rate: data.win_rate || 0,
+        avatar_url: data.photoURL || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(data.username || data.displayName || data.id || docSnap.id)}`,
+        status: data.status || "ONLINE",
+        relation_status: "none",
+      });
+    });
+    return list;
+  } catch (err) {
+    console.warn("[getFirestoreCommunityUsers] Error fetching Firestore users:", err);
+    return [];
   }
 }
 

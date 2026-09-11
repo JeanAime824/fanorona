@@ -12,6 +12,7 @@ import { GameSettings, GameStats } from "../game/types/gameTypes";
 import { UserProfile } from "../game/types/userTypes";
 import { api } from "../services/api";
 import { socketService } from "../services/socketService";
+import { syncUserProfile } from "../services/firebase/syncService";
 
 export interface CloudGameRecord {
   id: string;
@@ -85,6 +86,26 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   }, [user]);
 
+  const applyUser = (norm: PlatformUser) => {
+    setUser(norm);
+    localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+    // Synchronize to Cloud Firestore so all players are visible across browsers and devices
+    syncUserProfile(
+      norm.id,
+      norm.email,
+      norm.username,
+      norm.avatar_url,
+      norm.player_id,
+      {
+        isa: norm.isa,
+        gamesPlayed: norm.games_played,
+        winRate: norm.win_rate,
+        username: norm.username,
+        status: "ONLINE",
+      }
+    ).catch((err) => console.warn("Firestore sync warning:", err));
+  };
+
   // Process Google Sign-In Redirect Result on mount
   useEffect(() => {
     getRedirectResult(auth)
@@ -98,8 +119,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           if (res.user) {
             const norm = normalizeUser(res.user);
-            setUser(norm);
-            localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+            applyUser(norm);
           }
         }
       })
@@ -114,14 +134,15 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const me = await api.getMe();
       if (me) {
         const norm = normalizeUser(me);
-        setUser(norm);
-        localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+        applyUser(norm);
       } else {
         // Fallback to local storage if offline
         const saved = localStorage.getItem("fanorona_custom_user");
         if (saved) {
           try {
-            setUser(JSON.parse(saved));
+            const parsed = JSON.parse(saved);
+            setUser(parsed);
+            applyUser(parsed);
           } catch {
             setUser(null);
           }
@@ -133,7 +154,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const saved = localStorage.getItem("fanorona_custom_user");
       if (saved) {
         try {
-          setUser(JSON.parse(saved));
+          const parsed = JSON.parse(saved);
+          setUser(parsed);
+          applyUser(parsed);
         } catch {
           setUser(null);
         }
@@ -155,8 +178,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     if (res.user) {
       const norm = normalizeUser(res.user);
-      setUser(norm);
-      localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+      applyUser(norm);
     }
   };
 
@@ -169,8 +191,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     if (res.user) {
       const norm = normalizeUser(res.user);
-      setUser(norm);
-      localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+      applyUser(norm);
     }
   };
 
@@ -205,8 +226,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (res.user) {
           const norm = normalizeUser(res.user);
-          setUser(norm);
-          localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
+          applyUser(norm);
         }
       } catch (popupErr: any) {
         // If popup is blocked by third-party cookie/storage partitioning or browser security, fallback automatically to redirect
