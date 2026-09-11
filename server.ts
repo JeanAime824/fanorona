@@ -455,22 +455,28 @@ async function startServer() {
       let userId: string = "";
       let username: string = "";
 
-      if (
-        token.startsWith("gst_token_") ||
-        token.startsWith("token_") ||
-        token.startsWith("gst_") ||
-        token.startsWith("usr_")
-      ) {
-        userId = token.replace(/^(gst_token_|token_)/, "");
-        username = userId.startsWith("gst_") ? "Invité" : "Joueur";
+      if (token.startsWith("gst_token_") || token.startsWith("gst_")) {
+        userId = token.replace(/^gst_token_/, "");
+        username = "Invité";
+      } else if (token.startsWith("token_")) {
+        userId = token.replace(/^token_/, "");
+        username = "Joueur";
       } else {
         try {
           const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
           userId = decoded.userId;
           username = decoded.username || "Joueur";
         } catch {
-          userId = token;
-          username = "Joueur";
+          // Attempt decoding token (e.g. Firebase ID token or client session token)
+          const decodedRaw = jwt.decode(token) as any;
+          if (decodedRaw && (decodedRaw.userId || decodedRaw.uid || decodedRaw.sub)) {
+            const rawUid = decodedRaw.userId || decodedRaw.uid || decodedRaw.sub;
+            userId = rawUid.startsWith("usr_") ? rawUid : `usr_${rawUid}`;
+            username = decodedRaw.username || decodedRaw.name || decodedRaw.email?.split("@")[0] || "Joueur";
+          } else if (token.startsWith("usr_") && token.length < 100) {
+            userId = token;
+            username = "Joueur";
+          }
         }
       }
 
@@ -1881,14 +1887,20 @@ async function startServer() {
     socket.on("authenticate", ({ token, userId, user: userInfo }) => {
       let uid = "";
       if (token) {
-        if (token.startsWith("gst_token_") || token.startsWith("token_") || token.startsWith("gst_")) {
-          uid = token.replace(/^(gst_token_|token_)/, "");
+        if (token.startsWith("gst_token_") || token.startsWith("gst_")) {
+          uid = token.replace(/^gst_token_/, "");
+        } else if (token.startsWith("token_usr_")) {
+          uid = token.replace(/^token_/, "");
         } else {
           try {
             const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
             uid = decoded.userId;
           } catch {
-            uid = userId || userInfo?.id || "";
+            if (token.startsWith("usr_")) {
+              uid = token;
+            } else {
+              uid = userId || userInfo?.id || "";
+            }
           }
         }
       } else {
