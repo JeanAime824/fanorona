@@ -19,10 +19,12 @@ import { PublicProfilePage } from "./pages/PublicProfilePage";
 import { LoginPage } from "./pages/LoginPage";
 import { RegisterPage } from "./pages/RegisterPage";
 import { socketService } from "./services/socketService";
+import { ChallengeManager, OutgoingChallengeTarget } from "./components/multiplayer/ChallengeManager";
 
 function AppContent() {
   const [currentTab, setCurrentTab] = useState<string>("game");
   const [selectedPlayerId, setSelectedPlayerId] = useState<string>("");
+  const [pendingChallengeTarget, setPendingChallengeTarget] = useState<OutgoingChallengeTarget | null>(null);
   const { settings, updateSettings, stats } = useFanoronaGame();
   const { user } = useAuth();
 
@@ -114,14 +116,13 @@ function AppContent() {
             onNavigate={handleNavigate}
             onSelectPlayer={handleSelectPlayer}
             onInviteToGame={(friend) => {
-              handleNavigate("game");
-              setTimeout(() => {
-                window.dispatchEvent(
-                  new CustomEvent("open-new-game-modal", {
-                    detail: { friendId: friend.id, friendName: friend.username },
-                  })
-                );
-              }, 50);
+              setPendingChallengeTarget({
+                id: friend.id,
+                username: friend.username,
+                player_id: friend.player_id,
+                avatar_url: friend.avatar_url,
+                isa: friend.isa,
+              });
             }}
           />
         )}
@@ -137,7 +138,7 @@ function AppContent() {
             playerId={selectedPlayerId}
             onNavigate={handleNavigate}
             onStartGameWithUser={(target) => {
-              setCurrentTab("game");
+              setPendingChallengeTarget(target);
             }}
           />
         )}
@@ -153,6 +154,28 @@ function AppContent() {
           />
         )}
       </main>
+
+      {/* Real-time Global Challenge & Invitation Manager */}
+      <ChallengeManager
+        pendingTargetUser={pendingChallengeTarget}
+        onClearPendingTargetUser={() => setPendingChallengeTarget(null)}
+        onStartMultiplayerGame={(gameData) => {
+          handleNavigate("game");
+          setTimeout(() => {
+            window.dispatchEvent(
+              new CustomEvent("start-online-game", {
+                detail: {
+                  gameId: gameData.gameId,
+                  timeControl: gameData.timeControl,
+                  playerColor: gameData.playerColor,
+                  whitePlayer: gameData.whitePlayer,
+                  blackPlayer: gameData.blackPlayer,
+                },
+              })
+            );
+          }, 50);
+        }}
+      />
 
       {/* Cultural Sophisticated Footer */}
       <footer className="w-full border-t border-white/10 bg-[#0A0C10] py-5 px-4 text-center text-xs text-white/40">

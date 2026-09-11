@@ -79,17 +79,28 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
     if (selectedMode === "multiplayer" && selectedFriendId) {
       setIsCreatingGame(true);
       try {
-        const gameId = await multiActions.createLiveGame(
-          selectedFriendId,
-          selectedFriendId,
-          "",
-          selectedColor,
-          timeLimit
-        );
-        onStartGame("multiplayer", "medium", selectedColor, false, timeLimit, gameId, selectedFriendId);
+        await api.sendChallenge({
+          target_user_id: selectedFriendId,
+          time_control: timeLimit,
+          player_color: selectedColor,
+        });
         onClose();
       } catch (error) {
-        console.error("Erreur création partie:", error);
+        console.error("Erreur envoi défi ami:", error);
+        // Fallback to live session creation if API challenge fails
+        try {
+          const gameId = await multiActions.createLiveGame(
+            selectedFriendId,
+            selectedFriendId,
+            "",
+            selectedColor,
+            timeLimit
+          );
+          onStartGame("multiplayer", "medium", selectedColor, false, timeLimit, gameId, selectedFriendId);
+          onClose();
+        } catch (e) {
+          console.error("Fallback creation error:", e);
+        }
       } finally {
         setIsCreatingGame(false);
       }
@@ -98,7 +109,13 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
       try {
         const matchRes = await api.quickMatch(timeLimit);
         const gameId = matchRes.game?.id || matchRes.game_id;
-        onStartGame("multiplayer", "medium", selectedColor, false, timeLimit, gameId);
+        const assignedColor =
+          matchRes.game && user?.id
+            ? matchRes.game.player_white_id === user.id
+              ? "white"
+              : "black"
+            : selectedColor;
+        onStartGame("multiplayer", "medium", assignedColor, false, timeLimit, gameId);
         onClose();
       } catch (error) {
         console.error("Erreur matchmaking:", error);

@@ -54,7 +54,22 @@ export const GamePage: React.FC = () => {
     const handleOpen = () => setIsNewGameOpen(true);
     const handleStartOnline = (e: any) => {
       if (e.detail?.gameId) {
-        startNewGame("multiplayer", "medium", "white", false, 300, e.detail.gameId);
+        const pColor = e.detail.playerColor === "black" ? "black" : "white";
+        if (e.detail.whitePlayer?.username || e.detail.blackPlayer?.username) {
+          updateSettings({
+            playerNameWhite: e.detail.whitePlayer?.username || "Joueur Blanc",
+            playerNameBlack: e.detail.blackPlayer?.username || "Joueur Noir",
+          });
+        }
+        startNewGame(
+          "multiplayer",
+          "medium",
+          pColor === "white" ? "black" : "white",
+          false,
+          e.detail.timeControl || 300,
+          e.detail.gameId,
+          pColor
+        );
       }
     };
     window.addEventListener("open-new-game-modal", handleOpen);
@@ -94,7 +109,7 @@ export const GamePage: React.FC = () => {
               black: gameState.currentPlayer === "black" ? timeRemaining : -1
             }
           : undefined
-      );
+      ).catch(() => {});
     }
   }, [gameState.gameMode, gameState.multiplayerGameId, user?.id]);
 
@@ -105,7 +120,7 @@ export const GamePage: React.FC = () => {
         multiplayerGameId,
         gameState.winner,
         gameState.reason || "game_over"
-      );
+      ).catch(() => {});
     }
   }, [gameState.status, gameState.gameMode]);
 

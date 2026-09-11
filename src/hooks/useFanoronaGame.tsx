@@ -259,7 +259,8 @@ export function useFanoronaGameEngine() {
       aiColor: Player = "black",
       speedMode?: boolean,
       timeLimit?: number,
-      multiplayerGameId?: string
+      multiplayerGameId?: string,
+      playerColor?: Player
     ) => {
       if (speedMode !== undefined || timeLimit !== undefined) {
         setSettings((prev) => {
@@ -276,7 +277,7 @@ export function useFanoronaGameEngine() {
           setTimeRemaining(timeLimit);
         }
       }
-      const newGame = createInitialGame(mode, diff, aiColor, multiplayerGameId);
+      const newGame = createInitialGame(mode, diff, aiColor, multiplayerGameId, playerColor);
       historyManagerRef.current.reset();
       setPendingChoice(null);
       setIsAiThinking(false);
@@ -661,26 +662,26 @@ export function useFanoronaGameEngine() {
     setIsAiThinking(true);
 
     // Realistic thinking delay allowing user to observe AI contemplating its move
-    let thinkingDelay = 1200;
+    let thinkingDelay = 2200;
     if (gameState.captureSequence) {
       // In multiple capture combo, pause long enough to observe previous capture and animation
-      thinkingDelay = 850;
+      thinkingDelay = 1400;
     } else {
       switch (gameState.difficulty) {
         case "easy":
-          thinkingDelay = 1100;
+          thinkingDelay = 1800;
           break;
         case "medium":
-          thinkingDelay = 1600;
+          thinkingDelay = 2500;
           break;
         case "hard":
-          thinkingDelay = 2000;
+          thinkingDelay = 3200;
           break;
         case "expert":
-          thinkingDelay = 2400;
+          thinkingDelay = 3800;
           break;
         default:
-          thinkingDelay = 1400;
+          thinkingDelay = 2200;
       }
     }
 

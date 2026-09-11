@@ -73,6 +73,7 @@ interface GameInvitationDbRecord {
   status: "pending" | "accepted" | "rejected" | "expired" | "cancelled";
   game_id?: string;
   time_control: number;
+  player_color?: "white" | "black" | "random";
   created_at: string;
   updated_at: string;
 }
@@ -1261,7 +1262,7 @@ async function startServer() {
 
   app.post(["/api/challenges/send", "/api/challenges/send/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
-    const { target_user_id, player_id, game_type = "ranked", time_control = 300 } = req.body;
+    const { target_user_id, player_id, game_type = "ranked", time_control = 300, player_color = "random" } = req.body;
 
     let targetUser: UserDbRecord | undefined;
     if (target_user_id) {
@@ -1294,6 +1295,7 @@ async function startServer() {
       game_type: game_type === "casual" ? "casual" : "ranked",
       status: "pending",
       time_control: Number(time_control) || 300,
+      player_color: player_color === "white" || player_color === "black" ? player_color : "random",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -1315,13 +1317,14 @@ async function startServer() {
         player_id: currentUser.player_id,
         game_type,
         time_control,
+        player_color: newInvite.player_color,
       },
       is_read: false,
       created_at: new Date().toISOString(),
     };
     notifications.set(notifId, notif);
 
-    // Push socket event
+    // Push socket events (both game_invitation_received and challenge_received for complete compatibility)
     const targetSocketId = userSockets.get(targetUser.id);
     if (targetSocketId) {
       io.to(targetSocketId).emit("notification_received", notif);
@@ -1329,11 +1332,50 @@ async function startServer() {
         invite_id: inviteId,
         sender: toPublicProfile(currentUser),
         game_type,
-        time_control,
+        time_control: newInvite.time_control,
+        player_color: newInvite.player_color,
+      });
+      io.to(targetSocketId).emit("challenge_received", {
+        id: inviteId,
+        sender_id: currentUser.id,
+        sender_username: currentUser.username,
+        sender_avatar: currentUser.avatar_url,
+        sender_isa: currentUser.isa,
+        player_id: currentUser.player_id,
+        time_control: newInvite.time_control,
+        game_type: newInvite.game_type,
+        player_color: newInvite.player_color,
+        created_at: newInvite.created_at,
       });
     }
 
+    saveToDisk();
     res.status(201).json({ success: true, message: "Invitation de défi envoyée !", invite: newInvite });
+  });
+
+  app.post(["/api/challenges/:id/cancel", "/api/challenges/:id/cancel/"], authenticateJwt, (req: Request, res: Response) => {
+    const currentUser = (req as any).user as UserDbRecord;
+    const { id } = req.params;
+    const invite = gameInvitations.get(id);
+
+    if (!invite || invite.sender_id !== currentUser.id) {
+      return res.status(404).json({ error: "Invitation introuvable." });
+    }
+
+    if (invite.status !== "pending") {
+      return res.status(400).json({ error: `Impossible d'annuler une invitation déjà ${invite.status}.` });
+    }
+
+    invite.status = "cancelled";
+    invite.updated_at = new Date().toISOString();
+
+    const targetSocketId = userSockets.get(invite.receiver_id);
+    if (targetSocketId) {
+      io.to(targetSocketId).emit("challenge_cancelled", { invite_id: invite.id });
+    }
+
+    saveToDisk();
+    res.json({ success: true, message: "Défi annulé." });
   });
 
   app.post(["/api/challenges/:id/accept", "/api/challenges/:id/accept/"], authenticateJwt, (req: Request, res: Response) => {
@@ -1356,17 +1398,34 @@ async function startServer() {
     const initialGameState = createInitialGame("multiplayer", "medium", "black", gameId);
 
     const senderUser = users.get(invite.sender_id);
+
+    // Color resolution based on invitation's requested player_color
+    let whiteId = invite.sender_id;
+    let blackId = currentUser.id;
+    if (invite.player_color === "black") {
+      whiteId = currentUser.id;
+      blackId = invite.sender_id;
+    } else if (invite.player_color === "random") {
+      if (Math.random() < 0.5) {
+        whiteId = currentUser.id;
+        blackId = invite.sender_id;
+      }
+    }
+
+    const whiteUser = users.get(whiteId);
+    const blackUser = users.get(blackId);
+
     const newGame: GameDbRecord = {
       id: gameId,
       unique_game_code: gameCode,
       game_type: invite.game_type,
       status: "active",
-      player_white_id: invite.sender_id,
-      player_black_id: currentUser.id,
-      player_white_name: senderUser?.username || invite.sender_name,
-      player_black_name: currentUser.username,
-      player_white_isa: senderUser?.isa || 1200,
-      player_black_isa: currentUser.isa,
+      player_white_id: whiteId,
+      player_black_id: blackId,
+      player_white_name: whiteUser?.username || "Joueur Blanc",
+      player_black_name: blackUser?.username || "Joueur Noir",
+      player_white_isa: whiteUser?.isa || 1200,
+      player_black_isa: blackUser?.isa || 1200,
       winner: null,
       time_control: invite.time_control,
       current_turn: "white",
@@ -1384,17 +1443,52 @@ async function startServer() {
     invite.game_id = gameId;
     invite.updated_at = new Date().toISOString();
 
-    // Notify sender via Socket.io to launch match room automatically
+    // Mark both players presence as IN_GAME
+    if (senderUser) {
+      senderUser.status = "IN_GAME";
+      io.emit("user_presence_changed", { userId: senderUser.id, status: "IN_GAME" });
+    }
+    currentUser.status = "IN_GAME";
+    io.emit("user_presence_changed", { userId: currentUser.id, status: "IN_GAME" });
+
+    saveToDisk();
+
+    // Full accepted payload for client navigation and state initialization
+    const acceptedPayload = {
+      invite_id: invite.id,
+      game_id: gameId,
+      game_code: gameCode,
+      time_control: invite.time_control,
+      game_type: invite.game_type,
+      white_player_id: newGame.player_white_id,
+      black_player_id: newGame.player_black_id,
+      white_player: {
+        id: newGame.player_white_id,
+        username: newGame.player_white_name,
+        isa: newGame.player_white_isa,
+        avatar_url: whiteUser?.avatar_url,
+      },
+      black_player: {
+        id: newGame.player_black_id,
+        username: newGame.player_black_name,
+        isa: newGame.player_black_isa,
+        avatar_url: blackUser?.avatar_url,
+      },
+      opponent: toPublicProfile(senderUser || currentUser),
+      game: newGame,
+    };
+
+    // Notify both sender and receiver via Socket.io to launch match room simultaneously
     const senderSocketId = userSockets.get(invite.sender_id);
     if (senderSocketId) {
-      io.to(senderSocketId).emit("challenge_accepted", {
-        invite_id: invite.id,
-        game_id: gameId,
-        opponent: toPublicProfile(currentUser),
-      });
+      io.to(senderSocketId).emit("challenge_accepted", acceptedPayload);
+    }
+    const receiverSocketId = userSockets.get(currentUser.id);
+    if (receiverSocketId) {
+      io.to(receiverSocketId).emit("challenge_accepted", acceptedPayload);
     }
 
-    res.json({ success: true, message: "Défi accepté ! Lancement de la partie...", game_id: gameId, game: newGame });
+    res.json({ success: true, message: "Défi accepté ! Lancement de la partie...", game_id: gameId, game: newGame, payload: acceptedPayload });
   });
 
   app.post(["/api/challenges/:id/reject", "/api/challenges/:id/reject/"], authenticateJwt, (req: Request, res: Response) => {
@@ -1408,9 +1502,14 @@ async function startServer() {
 
     invite.status = "rejected";
     invite.updated_at = new Date().toISOString();
+    saveToDisk();
 
     const senderSocketId = userSockets.get(invite.sender_id);
     if (senderSocketId) {
+      io.to(senderSocketId).emit("challenge_declined", {
+        invite_id: invite.id,
+        opponent_name: currentUser.username,
+      });
       io.to(senderSocketId).emit("challenge_rejected", {
         invite_id: invite.id,
         opponent_name: currentUser.username,
@@ -1897,6 +1996,22 @@ async function startServer() {
             }
           }
 
+          // Restore presence
+          if (game.player_white_id) {
+            const uW = users.get(game.player_white_id);
+            if (uW && userSockets.has(game.player_white_id)) {
+              uW.status = "ONLINE";
+              io.emit("user_presence_changed", { userId: game.player_white_id, status: "ONLINE" });
+            }
+          }
+          if (game.player_black_id) {
+            const uB = users.get(game.player_black_id);
+            if (uB && userSockets.has(game.player_black_id)) {
+              uB.status = "ONLINE";
+              io.emit("user_presence_changed", { userId: game.player_black_id, status: "ONLINE" });
+            }
+          }
+
           emitToGame("game_over", {
             winner: nextState.winner,
             reason: nextState.reason,
@@ -1954,6 +2069,105 @@ async function startServer() {
         game.status = "finished";
         game.winner = nextState.winner;
         game.finished_at = new Date().toISOString();
+
+        let whiteIsaChange = 0;
+        let blackIsaChange = 0;
+
+        if (game.game_type === "ranked") {
+          const whiteUser = users.get(game.player_white_id);
+          const blackUser = game.player_black_id ? users.get(game.player_black_id) : undefined;
+
+          if (whiteUser && blackUser) {
+            if (nextState.winner === "white") {
+              whiteIsaChange = calculateIsaChange(whiteUser.isa, blackUser.isa, 1);
+              blackIsaChange = calculateIsaChange(blackUser.isa, whiteUser.isa, 0);
+            } else if (nextState.winner === "black") {
+              whiteIsaChange = calculateIsaChange(whiteUser.isa, blackUser.isa, 0);
+              blackIsaChange = calculateIsaChange(blackUser.isa, whiteUser.isa, 1);
+            }
+
+            const oldWhiteIsa = whiteUser.isa;
+            const oldBlackIsa = blackUser.isa;
+
+            whiteUser.isa = Math.max(100, whiteUser.isa + whiteIsaChange);
+            blackUser.isa = Math.max(100, blackUser.isa + blackIsaChange);
+            whiteUser.games_played++;
+            blackUser.games_played++;
+
+            if (nextState.winner === "white") {
+              whiteUser.wins++;
+              blackUser.losses++;
+            } else if (nextState.winner === "black") {
+              blackUser.wins++;
+              whiteUser.losses++;
+            }
+
+            const rhWhite: RatingHistoryDbRecord = {
+              id: `rh_${Date.now()}_w`,
+              user_id: whiteUser.id,
+              game_id: game.id,
+              opponent_name: blackUser.username,
+              old_rating: oldWhiteIsa,
+              new_rating: whiteUser.isa,
+              rating_change: whiteIsaChange,
+              reason: `Abandon adverse vs ${blackUser.username}`,
+              created_at: new Date().toISOString(),
+            };
+            const rhBlack: RatingHistoryDbRecord = {
+              id: `rh_${Date.now()}_b`,
+              user_id: blackUser.id,
+              game_id: game.id,
+              opponent_name: whiteUser.username,
+              old_rating: oldBlackIsa,
+              new_rating: blackUser.isa,
+              rating_change: blackIsaChange,
+              reason: `Abandon vs ${whiteUser.username}`,
+              created_at: new Date().toISOString(),
+            };
+
+            const wList = ratingHistories.get(whiteUser.id) || [];
+            wList.push(rhWhite);
+            ratingHistories.set(whiteUser.id, wList);
+
+            const bList = ratingHistories.get(blackUser.id) || [];
+            bList.push(rhBlack);
+            ratingHistories.set(blackUser.id, bList);
+
+            const wSock = userSockets.get(whiteUser.id);
+            if (wSock) {
+              io.to(wSock).emit("isa_updated", {
+                oldIsa: oldWhiteIsa,
+                newIsa: whiteUser.isa,
+                change: whiteIsaChange,
+              });
+            }
+            const bSock = userSockets.get(blackUser.id);
+            if (bSock) {
+              io.to(bSock).emit("isa_updated", {
+                oldIsa: oldBlackIsa,
+                newIsa: blackUser.isa,
+                change: blackIsaChange,
+              });
+            }
+          }
+        }
+
+        // Restore presence
+        if (game.player_white_id) {
+          const uW = users.get(game.player_white_id);
+          if (uW && userSockets.has(game.player_white_id)) {
+            uW.status = "ONLINE";
+            io.emit("user_presence_changed", { userId: game.player_white_id, status: "ONLINE" });
+          }
+        }
+        if (game.player_black_id) {
+          const uB = users.get(game.player_black_id);
+          if (uB && userSockets.has(game.player_black_id)) {
+            uB.status = "ONLINE";
+            io.emit("user_presence_changed", { userId: game.player_black_id, status: "ONLINE" });
+          }
+        }
+
         saveToDisk();
 
         const emitToGame = (event: string, payload: any) => {
@@ -1969,6 +2183,8 @@ async function startServer() {
         emitToGame("game_over", {
           winner: nextState.winner,
           reason: nextState.reason,
+          whiteIsaChange,
+          blackIsaChange,
         });
         emitToGame("game_room_state", game);
       } catch (err: any) {
