@@ -204,7 +204,7 @@ export const FanoronaBoard: React.FC<FanoronaBoardProps> = ({
                   }}
                   className={`absolute -translate-x-1/2 -translate-y-1/2 z-20 w-6 h-6 sm:w-8 sm:h-8 md:w-10 md:h-10 lg:w-11 lg:h-11 xl:w-12 xl:h-12 2xl:w-14 2xl:h-14 flex items-center justify-center pointer-events-none ${
                     animationsEnabled
-                      ? "transition-[left,top] duration-700 ease-[cubic-bezier(0.25,1,0.5,1)]"
+                      ? "transition-[left,top] duration-300 ease-[cubic-bezier(0.25,1,0.5,1)]"
                       : "transition-none"
                   }`}
                 >

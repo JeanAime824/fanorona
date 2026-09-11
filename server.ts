@@ -73,7 +73,6 @@ interface GameInvitationDbRecord {
   status: "pending" | "accepted" | "rejected" | "expired" | "cancelled";
   game_id?: string;
   time_control: number;
-  player_color?: "white" | "black" | "random";
   created_at: string;
   updated_at: string;
 }
@@ -222,21 +221,6 @@ function saveToDisk() {
   }
 }
 
-function clearAllData() {
-  users.clear();
-  usersByPlayerId.clear();
-  usersByUsername.clear();
-  friendships.clear();
-  friendRequests.clear();
-  gameInvitations.clear();
-  games.clear();
-  gamesByCode.clear();
-  notifications.clear();
-  ratingHistories.clear();
-  saveToDisk();
-  console.log("[Storage] Database cleared completely upon administrative reset.");
-}
-
 // Initial restoration from storage
 loadFromDisk();
 
@@ -269,59 +253,9 @@ function calculateIsaChange(playerIsa: number, opponentIsa: number, result: 1 | 
   return change;
 }
 
-const DB_FILE = path.join(process.cwd(), "fanorona_db.json");
-
-function persistDb() {
-  try {
-    const data = {
-      users: Array.from(users.values()),
-      friendships: Array.from(friendships.values()),
-      friendRequests: Array.from(friendRequests.values()),
-      ratingHistories: Array.from(ratingHistories.entries()),
-    };
-    fs.writeFileSync(DB_FILE, JSON.stringify(data, null, 2), "utf-8");
-  } catch (err) {
-    console.warn("[DB] Failed to persist database to file:", err);
-  }
-}
-
-function loadPersistedDb() {
-  try {
-    if (fs.existsSync(DB_FILE)) {
-      const raw = fs.readFileSync(DB_FILE, "utf-8");
-      const data = JSON.parse(raw);
-      if (Array.isArray(data.users)) {
-        for (const u of data.users) {
-          users.set(u.id, u);
-          usersByPlayerId.set(u.player_id.toUpperCase(), u);
-          usersByUsername.set(u.username.toLowerCase(), u);
-        }
-      }
-      if (Array.isArray(data.friendships)) {
-        for (const f of data.friendships) {
-          friendships.set(f.id, f);
-        }
-      }
-      if (Array.isArray(data.friendRequests)) {
-        for (const r of data.friendRequests) {
-          friendRequests.set(r.id, r);
-        }
-      }
-      if (Array.isArray(data.ratingHistories)) {
-        for (const [uid, entries] of data.ratingHistories) {
-          ratingHistories.set(uid, entries);
-        }
-      }
-      console.log(`[DB] Loaded ${users.size} persisted players from ${DB_FILE}`);
-    }
-  } catch (err) {
-    console.warn("[DB] Failed to load persisted database:", err);
-  }
-}
-
-// Real registered players persisted to disk
+// No dummy/virtual users - leaderboard only uses real registered players
 function seedDefaultData() {
-  loadPersistedDb();
+  // Empty seed to ensure 100% real user data
 }
 
 seedDefaultData();
@@ -366,120 +300,6 @@ async function startServer() {
   const userSockets = new Map<string, string>(); // userId -> socketId
   const socketUsers = new Map<string, string>(); // socketId -> userId
 
-  // Auto-registers or restores user record in memory database strictly by userId
-  function ensureUserRecord(
-    userId: string,
-    options?: { username?: string; email?: string; player_id?: string; avatar_url?: string; isa?: number }
-  ): UserDbRecord {
-    let user = users.get(userId);
-
-    if (user) {
-      let changed = false;
-      if (options?.username && options.username.trim()) {
-        const cleanUname = options.username.trim();
-        const lower = cleanUname.toLowerCase();
-        const existingByName = usersByUsername.get(lower);
-        if (!existingByName || existingByName.id === userId) {
-          usersByUsername.delete(user.username.toLowerCase());
-          user.username = cleanUname;
-          usersByUsername.set(lower, user);
-          changed = true;
-        }
-      }
-      if (options?.player_id && options.player_id.trim()) {
-        const cleanPid = options.player_id.trim().toUpperCase();
-        if (cleanPid !== user.player_id) {
-          const existingByPid = usersByPlayerId.get(cleanPid);
-          if (!existingByPid || existingByPid.id === userId) {
-            usersByPlayerId.delete(user.player_id);
-            user.player_id = cleanPid;
-            usersByPlayerId.set(cleanPid, user);
-            changed = true;
-          }
-        }
-      }
-      if (options?.avatar_url && options.avatar_url !== user.avatar_url) {
-        user.avatar_url = options.avatar_url;
-        changed = true;
-      }
-      if (options?.email && options.email !== user.email) {
-        user.email = options.email;
-        changed = true;
-      }
-      user.last_activity = new Date().toISOString();
-      if (changed) {
-        saveToDisk();
-      }
-      return user;
-    }
-
-    // New user creation
-    const requestedPid = options?.player_id?.trim().toUpperCase();
-    let pid = "";
-    if (requestedPid) {
-      const existingByPid = usersByPlayerId.get(requestedPid);
-      if (!existingByPid || existingByPid.id === userId) {
-        pid = requestedPid;
-      }
-    }
-    if (!pid) {
-      const allPlayerIds = new Set(usersByPlayerId.keys());
-      pid = generate6CharPlayerId(allPlayerIds);
-    }
-
-    const uname = options?.username?.trim() || `Joueur_${pid.substring(0, 4)}`;
-    const lowerName = uname.toLowerCase();
-    const uemail = options?.email?.trim() || `${lowerName.replace(/[^a-z0-9]/g, "")}@fanorona.local`;
-
-    const newUser: UserDbRecord = {
-      id: userId,
-      username: uname,
-      email: uemail,
-      password_hash: "",
-      player_id: pid,
-      isa: typeof options?.isa === "number" ? Math.max(100, options.isa) : 100,
-      games_played: 0,
-      wins: 0,
-      losses: 0,
-      draws: 0,
-      avatar_url: options?.avatar_url || `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(uname)}`,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      last_activity: new Date().toISOString(),
-      status: "ONLINE",
-    };
-
-    users.set(userId, newUser);
-    usersByPlayerId.set(pid, newUser);
-    usersByUsername.set(lowerName, newUser);
-    saveToDisk();
-    persistDb();
-    return newUser;
-  }
-
-  // Cryptographically verifies token or safely inspects claims
-  function extractUserIdFromToken(token: string | undefined | null): string {
-    if (!token) return "";
-    let clean = token.trim();
-    if (clean.startsWith("Bearer ")) clean = clean.substring(7).trim();
-    if (!clean) return "";
-
-    // 1. Check guest tokens or local tokens with explicit known prefix
-    if (clean.startsWith("gst_token_")) return clean.replace("gst_token_", "");
-    if (clean.startsWith("gst_")) return clean.replace("gst_", "");
-    if (clean.startsWith("token_usr_")) return clean.replace("token_", "");
-
-    // 2. Cryptographically verify signed server JWT using JWT_SECRET
-    try {
-      const decoded = jwt.verify(clean, JWT_SECRET) as { userId: string };
-      if (decoded && decoded.userId) return decoded.userId;
-    } catch {
-      // Invalid or expired token signature -> return empty string
-    }
-
-    return "";
-  }
-
   // JWT Middleware helper with auto-restoration for server restarts & guest support
   const authenticateJwt = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
@@ -491,14 +311,56 @@ async function startServer() {
       token = (req.query.token as string) || (req.body && req.body.token) || "";
     }
 
-    const userId = extractUserIdFromToken(token);
-
-    if (!userId) {
-      return res.status(401).json({ error: "Authentification requise. Token manquant ou invalide." });
+    if (!token) {
+      return res.status(401).json({ error: "Authentification requise. Token manquant." });
     }
 
     try {
-      const user = ensureUserRecord(userId);
+      let userId: string = "";
+      let username: string = "";
+
+      if (token.startsWith("gst_token_") || token.startsWith("token_") || token.startsWith("gst_")) {
+        userId = token.replace(/^(gst_token_|token_)/, "");
+        username = userId.startsWith("gst_") ? "Invité" : "Joueur";
+      } else {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username: string };
+          userId = decoded.userId;
+          username = decoded.username || "Joueur";
+        } catch {
+          userId = token;
+          username = "Joueur";
+        }
+      }
+
+      let user = users.get(userId);
+      if (!user) {
+        // Auto-restore user in memory if missing (e.g. after server restart or fallback session)
+        const allPlayerIds = new Set(usersByPlayerId.keys());
+        const playerId = generate6CharPlayerId(allPlayerIds);
+        const lowerUsername = username.toLowerCase();
+        user = {
+          id: userId,
+          username: username || `Joueur_${playerId.substring(0, 4)}`,
+          email: `${lowerUsername}@fanorona.local`,
+          password_hash: "",
+          player_id: playerId,
+          isa: 100, // Initial Isa Floor
+          games_played: 0,
+          wins: 0,
+          losses: 0,
+          draws: 0,
+          avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${username || playerId}`,
+          created_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+          last_activity: new Date().toISOString(),
+          status: "ONLINE",
+        };
+        users.set(userId, user);
+        usersByPlayerId.set(playerId, user);
+        usersByUsername.set(lowerUsername, user);
+      }
+
       (req as any).user = user;
       next();
     } catch (err) {
@@ -509,19 +371,14 @@ async function startServer() {
   // Optional authentication (for guests or viewing)
   const optionalJwt = (req: Request, res: Response, next: NextFunction) => {
     const authHeader = req.headers.authorization;
-    let token = "";
     if (authHeader && authHeader.startsWith("Bearer ")) {
-      token = authHeader.split(" ")[1];
-    }
-    if (!token) {
-      token = (req.query.token as string) || (req.body && req.body.token) || "";
-    }
-
-    const userId = extractUserIdFromToken(token);
-    if (userId) {
+      const token = authHeader.split(" ")[1];
       try {
-        const user = ensureUserRecord(userId);
-        (req as any).user = user;
+        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+        const user = users.get(decoded.userId);
+        if (user) {
+          (req as any).user = user;
+        }
       } catch {
         // Continue unauthenticated
       }
@@ -604,7 +461,6 @@ async function startServer() {
           created_at: newUser.created_at,
         },
       ]);
-      persistDb();
 
       const token = jwt.sign({ userId, username: cleanUsername }, JWT_SECRET, {
         expiresIn: JWT_EXPIRES_IN,
@@ -720,7 +576,7 @@ async function startServer() {
       if (!user) {
         const allPlayerIds = new Set(usersByPlayerId.keys());
         const playerId = generate6CharPlayerId(allPlayerIds);
-        const userId = `usr_${uid}`;
+        const userId = `usr_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`;
         const cleanName = (displayName && displayName.trim()) || `Joueur_${playerId}`;
         let lowerUsername = cleanName.toLowerCase();
 
@@ -775,9 +631,6 @@ async function startServer() {
         usersByPlayerId.set(user.player_id, user);
         usersByUsername.set(user.username.toLowerCase(), user);
       }
-
-      saveToDisk();
-      persistDb();
 
       const token = jwt.sign({ userId: user.id, username: user.username }, JWT_SECRET, {
         expiresIn: JWT_EXPIRES_IN,
@@ -874,76 +727,49 @@ async function startServer() {
   // ==========================================
 
   app.get(["/api/users/search", "/api/users/search/"], optionalJwt, (req: Request, res: Response) => {
-    const rawQ = ((req.query.q as string) || "").trim();
+    const q = ((req.query.q as string) || "").trim();
     const currentUser = (req as any).user as UserDbRecord | undefined;
     const currentUserId = currentUser?.id;
+    const upperQuery = q.toUpperCase();
+    const lowerQuery = q.toLowerCase();
 
     const matches: any[] = [];
-    const addedIds = new Set<string>();
 
-    if (!rawQ) {
-      // Return all active registered players when query is empty (excluding self from friend suggestions)
+    if (!q) {
+      // Return all active registered players when query is empty
       for (const u of users.values()) {
         if (u.id === currentUserId) continue;
         matches.push(buildSearchResult(u, currentUserId));
-        addedIds.add(u.id);
-        if (matches.length >= 25) break;
+        if (matches.length >= 20) break;
       }
       return res.json(matches);
     }
 
-    const cleanId = rawQ.toUpperCase().replace(/[^A-Z0-9]/g, "");
-    const lowerQuery = rawQ.toLowerCase();
-
-    // 1. Direct match on 6-character player_id (highest priority, including self if searched)
-    if (cleanId.length >= 2) {
-      const exactIdUser = usersByPlayerId.get(cleanId);
-      if (exactIdUser) {
-        matches.push(buildSearchResult(exactIdUser, currentUserId));
-        addedIds.add(exactIdUser.id);
-      }
+    // 1. Direct match on 6-character player_id (highest priority)
+    const exactIdUser = usersByPlayerId.get(upperQuery);
+    if (exactIdUser && exactIdUser.id !== currentUserId) {
+      matches.push(buildSearchResult(exactIdUser, currentUserId));
     }
 
-    // 2. Exact username match
-    const exactUsernameUser = usersByUsername.get(lowerQuery);
-    if (exactUsernameUser && !addedIds.has(exactUsernameUser.id)) {
-      matches.push(buildSearchResult(exactUsernameUser, currentUserId));
-      addedIds.add(exactUsernameUser.id);
-    }
-
-    // 3. Partial match on username, player_id, or email
+    // 2. Partial match on username, player_id, or email
     for (const u of users.values()) {
-      if (addedIds.has(u.id)) continue;
-      const uPid = (u.player_id || "").toUpperCase();
-      const uName = (u.username || "").toLowerCase();
-      const uEmail = (u.email || "").toLowerCase();
-
+      if (u.id === currentUserId || (exactIdUser && u.id === exactIdUser.id)) continue;
       if (
-        (cleanId.length >= 2 && uPid.includes(cleanId)) ||
-        uName.includes(lowerQuery) ||
-        uEmail.includes(lowerQuery)
+        u.username.toLowerCase().includes(lowerQuery) ||
+        u.player_id.includes(upperQuery) ||
+        u.email.toLowerCase().includes(lowerQuery)
       ) {
         matches.push(buildSearchResult(u, currentUserId));
-        addedIds.add(u.id);
       }
-      if (matches.length >= 25) break;
+      if (matches.length >= 20) break;
     }
 
     res.json(matches);
   });
 
   function buildSearchResult(targetUser: UserDbRecord, currentUserId?: string) {
-    let relationStatus: "none" | "pending_sent" | "pending_received" | "friends" | "self" = "none";
+    let relationStatus: "none" | "pending_sent" | "pending_received" | "friends" = "none";
     let friendRequestId: string | undefined;
-
-    if (currentUserId && targetUser.id === currentUserId) {
-      return {
-        ...toPublicProfile(targetUser),
-        relation_status: "self" as const,
-        friend_request_id: undefined,
-        is_self: true,
-      };
-    }
 
     if (currentUserId) {
       // Check friendship
@@ -973,7 +799,6 @@ async function startServer() {
       ...toPublicProfile(targetUser),
       relation_status: relationStatus,
       friend_request_id: friendRequestId,
-      is_self: false,
     };
   }
 
@@ -1005,12 +830,6 @@ async function startServer() {
     }
     const currentUser = (req as any).user as UserDbRecord | undefined;
     res.json(buildSearchResult(user, currentUser?.id));
-  });
-
-  // Admin endpoint to clear/reset local database
-  app.post(["/api/admin/clear-db", "/api/admin/clear-db/"], (req: Request, res: Response) => {
-    clearAllData();
-    res.json({ message: "Base de données réinitialisée et vidée avec succès." });
   });
 
   // ==========================================
@@ -1339,7 +1158,7 @@ async function startServer() {
 
   app.post(["/api/challenges/send", "/api/challenges/send/"], authenticateJwt, (req: Request, res: Response) => {
     const currentUser = (req as any).user as UserDbRecord;
-    const { target_user_id, player_id, game_type = "ranked", time_control = 300, player_color = "random" } = req.body;
+    const { target_user_id, player_id, game_type = "ranked", time_control = 300 } = req.body;
 
     let targetUser: UserDbRecord | undefined;
     if (target_user_id) {
@@ -1372,7 +1191,6 @@ async function startServer() {
       game_type: game_type === "casual" ? "casual" : "ranked",
       status: "pending",
       time_control: Number(time_control) || 300,
-      player_color: player_color === "white" || player_color === "black" ? player_color : "random",
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
     };
@@ -1394,14 +1212,13 @@ async function startServer() {
         player_id: currentUser.player_id,
         game_type,
         time_control,
-        player_color: newInvite.player_color,
       },
       is_read: false,
       created_at: new Date().toISOString(),
     };
     notifications.set(notifId, notif);
 
-    // Push socket events (both game_invitation_received and challenge_received for complete compatibility)
+    // Push socket event
     const targetSocketId = userSockets.get(targetUser.id);
     if (targetSocketId) {
       io.to(targetSocketId).emit("notification_received", notif);
@@ -1409,50 +1226,11 @@ async function startServer() {
         invite_id: inviteId,
         sender: toPublicProfile(currentUser),
         game_type,
-        time_control: newInvite.time_control,
-        player_color: newInvite.player_color,
-      });
-      io.to(targetSocketId).emit("challenge_received", {
-        id: inviteId,
-        sender_id: currentUser.id,
-        sender_username: currentUser.username,
-        sender_avatar: currentUser.avatar_url,
-        sender_isa: currentUser.isa,
-        player_id: currentUser.player_id,
-        time_control: newInvite.time_control,
-        game_type: newInvite.game_type,
-        player_color: newInvite.player_color,
-        created_at: newInvite.created_at,
+        time_control,
       });
     }
 
-    saveToDisk();
     res.status(201).json({ success: true, message: "Invitation de défi envoyée !", invite: newInvite });
-  });
-
-  app.post(["/api/challenges/:id/cancel", "/api/challenges/:id/cancel/"], authenticateJwt, (req: Request, res: Response) => {
-    const currentUser = (req as any).user as UserDbRecord;
-    const { id } = req.params;
-    const invite = gameInvitations.get(id);
-
-    if (!invite || invite.sender_id !== currentUser.id) {
-      return res.status(404).json({ error: "Invitation introuvable." });
-    }
-
-    if (invite.status !== "pending") {
-      return res.status(400).json({ error: `Impossible d'annuler une invitation déjà ${invite.status}.` });
-    }
-
-    invite.status = "cancelled";
-    invite.updated_at = new Date().toISOString();
-
-    const targetSocketId = userSockets.get(invite.receiver_id);
-    if (targetSocketId) {
-      io.to(targetSocketId).emit("challenge_cancelled", { invite_id: invite.id });
-    }
-
-    saveToDisk();
-    res.json({ success: true, message: "Défi annulé." });
   });
 
   app.post(["/api/challenges/:id/accept", "/api/challenges/:id/accept/"], authenticateJwt, (req: Request, res: Response) => {
@@ -1475,34 +1253,17 @@ async function startServer() {
     const initialGameState = createInitialGame("multiplayer", "medium", "black", gameId);
 
     const senderUser = users.get(invite.sender_id);
-
-    // Color resolution based on invitation's requested player_color
-    let whiteId = invite.sender_id;
-    let blackId = currentUser.id;
-    if (invite.player_color === "black") {
-      whiteId = currentUser.id;
-      blackId = invite.sender_id;
-    } else if (invite.player_color === "random") {
-      if (Math.random() < 0.5) {
-        whiteId = currentUser.id;
-        blackId = invite.sender_id;
-      }
-    }
-
-    const whiteUser = users.get(whiteId);
-    const blackUser = users.get(blackId);
-
     const newGame: GameDbRecord = {
       id: gameId,
       unique_game_code: gameCode,
       game_type: invite.game_type,
       status: "active",
-      player_white_id: whiteId,
-      player_black_id: blackId,
-      player_white_name: whiteUser?.username || "Joueur Blanc",
-      player_black_name: blackUser?.username || "Joueur Noir",
-      player_white_isa: whiteUser?.isa || 1200,
-      player_black_isa: blackUser?.isa || 1200,
+      player_white_id: invite.sender_id,
+      player_black_id: currentUser.id,
+      player_white_name: senderUser?.username || invite.sender_name,
+      player_black_name: currentUser.username,
+      player_white_isa: senderUser?.isa || 1200,
+      player_black_isa: currentUser.isa,
       winner: null,
       time_control: invite.time_control,
       current_turn: "white",
@@ -1520,52 +1281,17 @@ async function startServer() {
     invite.game_id = gameId;
     invite.updated_at = new Date().toISOString();
 
-    // Mark both players presence as IN_GAME
-    if (senderUser) {
-      senderUser.status = "IN_GAME";
-      io.emit("user_presence_changed", { userId: senderUser.id, status: "IN_GAME" });
-    }
-    currentUser.status = "IN_GAME";
-    io.emit("user_presence_changed", { userId: currentUser.id, status: "IN_GAME" });
-
-    saveToDisk();
-
-    // Full accepted payload for client navigation and state initialization
-    const acceptedPayload = {
-      invite_id: invite.id,
-      game_id: gameId,
-      game_code: gameCode,
-      time_control: invite.time_control,
-      game_type: invite.game_type,
-      white_player_id: newGame.player_white_id,
-      black_player_id: newGame.player_black_id,
-      white_player: {
-        id: newGame.player_white_id,
-        username: newGame.player_white_name,
-        isa: newGame.player_white_isa,
-        avatar_url: whiteUser?.avatar_url,
-      },
-      black_player: {
-        id: newGame.player_black_id,
-        username: newGame.player_black_name,
-        isa: newGame.player_black_isa,
-        avatar_url: blackUser?.avatar_url,
-      },
-      opponent: toPublicProfile(senderUser || currentUser),
-      game: newGame,
-    };
-
-    // Notify both sender and receiver via Socket.io to launch match room simultaneously
+    // Notify sender via Socket.io to launch match room automatically
     const senderSocketId = userSockets.get(invite.sender_id);
     if (senderSocketId) {
-      io.to(senderSocketId).emit("challenge_accepted", acceptedPayload);
-    }
-    const receiverSocketId = userSockets.get(currentUser.id);
-    if (receiverSocketId) {
-      io.to(receiverSocketId).emit("challenge_accepted", acceptedPayload);
+      io.to(senderSocketId).emit("challenge_accepted", {
+        invite_id: invite.id,
+        game_id: gameId,
+        opponent: toPublicProfile(currentUser),
+      });
     }
 
-    res.json({ success: true, message: "Défi accepté ! Lancement de la partie...", game_id: gameId, game: newGame, payload: acceptedPayload });
+    res.json({ success: true, message: "Défi accepté ! Lancement de la partie...", game_id: gameId, game: newGame });
   });
 
   app.post(["/api/challenges/:id/reject", "/api/challenges/:id/reject/"], authenticateJwt, (req: Request, res: Response) => {
@@ -1579,14 +1305,9 @@ async function startServer() {
 
     invite.status = "rejected";
     invite.updated_at = new Date().toISOString();
-    saveToDisk();
 
     const senderSocketId = userSockets.get(invite.sender_id);
     if (senderSocketId) {
-      io.to(senderSocketId).emit("challenge_declined", {
-        invite_id: invite.id,
-        opponent_name: currentUser.username,
-      });
       io.to(senderSocketId).emit("challenge_rejected", {
         invite_id: invite.id,
         opponent_name: currentUser.username,
@@ -1842,20 +1563,6 @@ async function startServer() {
     });
   });
 
-  // User Profile Sync Endpoint (for client-side or guest authentication)
-  app.post(["/api/users/sync", "/api/users/sync/"], authenticateJwt, (req: Request, res: Response) => {
-    const currentUser = (req as any).user as UserDbRecord;
-    const { username, email, player_id, avatar_url } = req.body;
-
-    const syncedUser = ensureUserRecord(currentUser.id, {
-      username,
-      email,
-      player_id,
-      avatar_url,
-    });
-    res.json(toPublicProfile(syncedUser));
-  });
-
   // Catch-all fallback for any unknown API route: ALWAYS return JSON, never HTML
   app.all("/api/*", (req: Request, res: Response) => {
     res.status(404).json({ error: `Route API introuvable : ${req.method} ${req.path}` });
@@ -1882,27 +1589,26 @@ async function startServer() {
 
   io.on("connection", (socket: Socket) => {
     // Authenticate socket user
-    socket.on("authenticate", ({ token, userId, user: userInfo }) => {
-      const uid =
-        extractUserIdFromToken(token) ||
-        (typeof userId === "string" && userId.startsWith("usr_") ? userId : "") ||
-        (typeof userInfo?.id === "string" && userInfo.id.startsWith("usr_") ? userInfo.id : "") ||
-        (typeof userId === "string" && userId ? userId : "") ||
-        (typeof userInfo?.id === "string" && userInfo.id ? userInfo.id : "");
-
+    socket.on("authenticate", ({ token, userId }) => {
+      let uid = userId;
+      if (token) {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
+          uid = decoded.userId;
+        } catch {
+          // fallback
+        }
+      }
       if (uid) {
         userSockets.set(uid, socket.id);
         socketUsers.set(socket.id, uid);
 
-        const u = ensureUserRecord(uid, {
-          username: userInfo?.username || userInfo?.displayName,
-          email: userInfo?.email,
-          player_id: userInfo?.player_id,
-          avatar_url: userInfo?.avatar_url || userInfo?.photoURL,
-        });
-        u.status = "ONLINE";
-        u.last_activity = new Date().toISOString();
-        io.emit("user_presence_changed", { userId: uid, status: "ONLINE" });
+        const u = users.get(uid);
+        if (u) {
+          u.status = "ONLINE";
+          u.last_activity = new Date().toISOString();
+          io.emit("user_presence_changed", { userId: uid, status: "ONLINE" });
+        }
       }
     });
 
@@ -2088,22 +1794,6 @@ async function startServer() {
             }
           }
 
-          // Restore presence
-          if (game.player_white_id) {
-            const uW = users.get(game.player_white_id);
-            if (uW && userSockets.has(game.player_white_id)) {
-              uW.status = "ONLINE";
-              io.emit("user_presence_changed", { userId: game.player_white_id, status: "ONLINE" });
-            }
-          }
-          if (game.player_black_id) {
-            const uB = users.get(game.player_black_id);
-            if (uB && userSockets.has(game.player_black_id)) {
-              uB.status = "ONLINE";
-              io.emit("user_presence_changed", { userId: game.player_black_id, status: "ONLINE" });
-            }
-          }
-
           emitToGame("game_over", {
             winner: nextState.winner,
             reason: nextState.reason,
@@ -2161,105 +1851,6 @@ async function startServer() {
         game.status = "finished";
         game.winner = nextState.winner;
         game.finished_at = new Date().toISOString();
-
-        let whiteIsaChange = 0;
-        let blackIsaChange = 0;
-
-        if (game.game_type === "ranked") {
-          const whiteUser = users.get(game.player_white_id);
-          const blackUser = game.player_black_id ? users.get(game.player_black_id) : undefined;
-
-          if (whiteUser && blackUser) {
-            if (nextState.winner === "white") {
-              whiteIsaChange = calculateIsaChange(whiteUser.isa, blackUser.isa, 1);
-              blackIsaChange = calculateIsaChange(blackUser.isa, whiteUser.isa, 0);
-            } else if (nextState.winner === "black") {
-              whiteIsaChange = calculateIsaChange(whiteUser.isa, blackUser.isa, 0);
-              blackIsaChange = calculateIsaChange(blackUser.isa, whiteUser.isa, 1);
-            }
-
-            const oldWhiteIsa = whiteUser.isa;
-            const oldBlackIsa = blackUser.isa;
-
-            whiteUser.isa = Math.max(100, whiteUser.isa + whiteIsaChange);
-            blackUser.isa = Math.max(100, blackUser.isa + blackIsaChange);
-            whiteUser.games_played++;
-            blackUser.games_played++;
-
-            if (nextState.winner === "white") {
-              whiteUser.wins++;
-              blackUser.losses++;
-            } else if (nextState.winner === "black") {
-              blackUser.wins++;
-              whiteUser.losses++;
-            }
-
-            const rhWhite: RatingHistoryDbRecord = {
-              id: `rh_${Date.now()}_w`,
-              user_id: whiteUser.id,
-              game_id: game.id,
-              opponent_name: blackUser.username,
-              old_rating: oldWhiteIsa,
-              new_rating: whiteUser.isa,
-              rating_change: whiteIsaChange,
-              reason: `Abandon adverse vs ${blackUser.username}`,
-              created_at: new Date().toISOString(),
-            };
-            const rhBlack: RatingHistoryDbRecord = {
-              id: `rh_${Date.now()}_b`,
-              user_id: blackUser.id,
-              game_id: game.id,
-              opponent_name: whiteUser.username,
-              old_rating: oldBlackIsa,
-              new_rating: blackUser.isa,
-              rating_change: blackIsaChange,
-              reason: `Abandon vs ${whiteUser.username}`,
-              created_at: new Date().toISOString(),
-            };
-
-            const wList = ratingHistories.get(whiteUser.id) || [];
-            wList.push(rhWhite);
-            ratingHistories.set(whiteUser.id, wList);
-
-            const bList = ratingHistories.get(blackUser.id) || [];
-            bList.push(rhBlack);
-            ratingHistories.set(blackUser.id, bList);
-
-            const wSock = userSockets.get(whiteUser.id);
-            if (wSock) {
-              io.to(wSock).emit("isa_updated", {
-                oldIsa: oldWhiteIsa,
-                newIsa: whiteUser.isa,
-                change: whiteIsaChange,
-              });
-            }
-            const bSock = userSockets.get(blackUser.id);
-            if (bSock) {
-              io.to(bSock).emit("isa_updated", {
-                oldIsa: oldBlackIsa,
-                newIsa: blackUser.isa,
-                change: blackIsaChange,
-              });
-            }
-          }
-        }
-
-        // Restore presence
-        if (game.player_white_id) {
-          const uW = users.get(game.player_white_id);
-          if (uW && userSockets.has(game.player_white_id)) {
-            uW.status = "ONLINE";
-            io.emit("user_presence_changed", { userId: game.player_white_id, status: "ONLINE" });
-          }
-        }
-        if (game.player_black_id) {
-          const uB = users.get(game.player_black_id);
-          if (uB && userSockets.has(game.player_black_id)) {
-            uB.status = "ONLINE";
-            io.emit("user_presence_changed", { userId: game.player_black_id, status: "ONLINE" });
-          }
-        }
-
         saveToDisk();
 
         const emitToGame = (event: string, payload: any) => {
@@ -2275,8 +1866,6 @@ async function startServer() {
         emitToGame("game_over", {
           winner: nextState.winner,
           reason: nextState.reason,
-          whiteIsaChange,
-          blackIsaChange,
         });
         emitToGame("game_room_state", game);
       } catch (err: any) {

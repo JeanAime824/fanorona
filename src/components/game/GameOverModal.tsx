@@ -88,7 +88,7 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
         <p className="text-xs text-white/50 mb-6 px-4">{subtitle}</p>
 
         {/* Stats Summary */}
-        <div className="grid grid-cols-2 gap-3 mb-4 p-3.5 rounded-lg bg-[#141414] border border-white/10 text-left">
+        <div className="grid grid-cols-2 gap-3 mb-6 p-3.5 rounded-lg bg-[#141414] border border-white/10 text-left">
           <div>
             <div className="text-[10px] uppercase text-white/40 font-semibold tracking-wider">
               Tours joués
@@ -106,25 +106,6 @@ export const GameOverModal: React.FC<GameOverModalProps> = ({
             </div>
           </div>
         </div>
-
-        {/* Multiplayer Isa Rating Delta badge */}
-        {gameState.gameMode === "multiplayer" && gameState.isaChange && (
-          <div className="mb-5 p-2.5 rounded-xl bg-white/[0.04] border border-[#C8A452]/30 flex items-center justify-around text-center">
-            <div>
-              <div className="text-[9px] uppercase font-semibold text-white/50 tracking-wider">Blancs</div>
-              <div className={`font-mono text-sm font-bold ${gameState.isaChange.white >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                {gameState.isaChange.white >= 0 ? `+${gameState.isaChange.white}` : gameState.isaChange.white} Isa
-              </div>
-            </div>
-            <div className="h-6 w-px bg-white/10" />
-            <div>
-              <div className="text-[9px] uppercase font-semibold text-white/50 tracking-wider">Noirs</div>
-              <div className={`font-mono text-sm font-bold ${gameState.isaChange.black >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
-                {gameState.isaChange.black >= 0 ? `+${gameState.isaChange.black}` : gameState.isaChange.black} Isa
-              </div>
-            </div>
-          </div>
-        )}
 
         {/* Action buttons */}
         <div className="flex flex-col gap-2.5">

@@ -48,9 +48,9 @@ class SocketService {
     return this.socket;
   }
 
-  public authenticate(token?: string | null, userId?: string, user?: any) {
+  public authenticate(token?: string | null, userId?: string) {
     const socket = this.connect();
-    socket.emit("authenticate", { token, userId, user });
+    socket.emit("authenticate", { token, userId });
   }
 
   public onChallengeAccepted(callback: (data: { invite_id: string; game_id: string; opponent: any }) => void) {
@@ -169,46 +169,6 @@ class SocketService {
     const socket = this.connect();
     socket.off("chat_message");
     socket.on("chat_message", callback);
-  }
-
-  public offerDraw(gameId: string, player: Player) {
-    const socket = this.connect();
-    socket.emit("offer_draw", { gameId, player });
-  }
-
-  public acceptDraw(gameId: string) {
-    const socket = this.connect();
-    socket.emit("accept_draw", { gameId });
-  }
-
-  public onClockTick(callback: (clocks: { white: number; black: number }) => void) {
-    const socket = this.connect();
-    socket.off("clock_tick");
-    socket.on("clock_tick", callback);
-  }
-
-  public onDrawOffered(callback: (data: { offeredBy: Player }) => void) {
-    const socket = this.connect();
-    socket.off("draw_offered");
-    socket.on("draw_offered", callback);
-  }
-
-  public onChallengeReceived(callback: (data: any) => void) {
-    const socket = this.connect();
-    socket.off("challenge_received");
-    socket.on("challenge_received", callback);
-  }
-
-  public onChallengeDeclined(callback: (data: any) => void) {
-    const socket = this.connect();
-    socket.off("challenge_declined");
-    socket.on("challenge_declined", callback);
-  }
-
-  public onChallengeCancelled(callback: (data: any) => void) {
-    const socket = this.connect();
-    socket.off("challenge_cancelled");
-    socket.on("challenge_cancelled", callback);
   }
 
   public async addServerFriend(userId: string, targetUserId: string) {

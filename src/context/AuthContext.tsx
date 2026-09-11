@@ -12,7 +12,6 @@ import { GameSettings, GameStats } from "../game/types/gameTypes";
 import { UserProfile } from "../game/types/userTypes";
 import { api } from "../services/api";
 import { socketService } from "../services/socketService";
-import { syncUserProfile } from "../services/firebase/syncService";
 
 export interface CloudGameRecord {
   id: string;
@@ -79,41 +78,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     if (user) {
       try {
         const token = localStorage.getItem("fanorona_jwt_token");
-        socketService.authenticate(token, user.id, user);
+        socketService.authenticate(token, user.id);
       } catch (err) {
         console.warn("Socket auth sync:", err);
       }
     }
   }, [user]);
-
-  const applyUser = (norm: PlatformUser) => {
-    setUser(norm);
-    localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
-    // Synchronize to REST Backend Server so user is registered in memory and visible in search
-    api.syncUser(norm).catch((err) => console.warn("Backend sync warning:", err));
-    // Synchronize to Cloud Firestore so all players are visible across browsers and devices.
-    // IMPORTANT: firestore.rules only allows writing users/{userId} when
-    // request.auth.uid === userId (isOwner check). The backend's user id (norm.id) is
-    // prefixed ("usr_<firebase_uid>") and will NEVER match request.auth.uid, so every
-    // write would be silently rejected. Only sync when there is an active Firebase Auth
-    // session (currently: Google sign-in) and use the real Firebase uid as the doc id.
-    if (auth.currentUser) {
-      syncUserProfile(
-        auth.currentUser.uid,
-        norm.email,
-        norm.username,
-        norm.avatar_url,
-        norm.player_id,
-        {
-          isa: norm.isa,
-          gamesPlayed: norm.games_played,
-          winRate: norm.win_rate,
-          username: norm.username,
-          status: "ONLINE",
-        }
-      ).catch((err) => console.warn("Firestore sync warning:", err));
-    }
-  };
 
   // Process Google Sign-In Redirect Result on mount
   useEffect(() => {
@@ -128,7 +98,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           });
           if (res.user) {
             const norm = normalizeUser(res.user);
-            applyUser(norm);
+            setUser(norm);
+            localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
           }
         }
       })
@@ -143,15 +114,14 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const me = await api.getMe();
       if (me) {
         const norm = normalizeUser(me);
-        applyUser(norm);
+        setUser(norm);
+        localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
       } else {
         // Fallback to local storage if offline
         const saved = localStorage.getItem("fanorona_custom_user");
         if (saved) {
           try {
-            const parsed = JSON.parse(saved);
-            setUser(parsed);
-            applyUser(parsed);
+            setUser(JSON.parse(saved));
           } catch {
             setUser(null);
           }
@@ -163,9 +133,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const saved = localStorage.getItem("fanorona_custom_user");
       if (saved) {
         try {
-          const parsed = JSON.parse(saved);
-          setUser(parsed);
-          applyUser(parsed);
+          setUser(JSON.parse(saved));
         } catch {
           setUser(null);
         }
@@ -187,7 +155,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     if (res.user) {
       const norm = normalizeUser(res.user);
-      applyUser(norm);
+      setUser(norm);
+      localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
     }
   };
 
@@ -200,7 +169,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     });
     if (res.user) {
       const norm = normalizeUser(res.user);
-      applyUser(norm);
+      setUser(norm);
+      localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
     }
   };
 
@@ -235,7 +205,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
         if (res.user) {
           const norm = normalizeUser(res.user);
-          applyUser(norm);
+          setUser(norm);
+          localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
         }
       } catch (popupErr: any) {
         // If popup is blocked by third-party cookie/storage partitioning or browser security, fallback automatically to redirect
@@ -292,7 +263,8 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const guestToken = `gst_token_${guestUser.id}`;
     localStorage.setItem("fanorona_jwt_token", guestToken);
     localStorage.setItem("fanorona_refresh_token", guestToken);
-    applyUser(guestUser);
+    localStorage.setItem("fanorona_custom_user", JSON.stringify(guestUser));
+    setUser(guestUser);
   };
 
   const logout = async () => {

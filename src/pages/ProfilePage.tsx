@@ -56,7 +56,10 @@ export const ProfilePage: React.FC<ProfilePageProps> = ({ onNavigate }) => {
         </p>
         <div className="flex justify-center gap-3 pt-2">
           <Button variant="primary" size="md" onClick={() => onNavigate("connexion")}>
-            Se connecter avec Google
+            Se connecter
+          </Button>
+          <Button variant="ghost" size="md" onClick={() => onNavigate("inscription")}>
+            Créer un compte
           </Button>
         </div>
       </div>

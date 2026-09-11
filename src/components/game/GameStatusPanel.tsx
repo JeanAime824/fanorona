@@ -22,16 +22,7 @@ export interface GameStatusPanelProps {
   timeRemaining?: number;
   onToggleSpeedMode?: () => void;
   onSetTurnTimeLimit?: (seconds: number) => void;
-  multiplayerClocks?: { white: number; black: number } | null;
-  multiplayerOpponent?: { id: string; username: string; avatar_url?: string; isa?: number } | null;
 }
-
-const formatClock = (sec: number): string => {
-  if (sec < 0) return "--:--";
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
-  return `${m.toString().padStart(2, "0")}:${s.toString().padStart(2, "0")}`;
-};
 
 export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
   gameState,
@@ -42,8 +33,6 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
   timeRemaining = 30,
   onToggleSpeedMode,
   onSetTurnTimeLimit,
-  multiplayerClocks,
-  multiplayerOpponent,
 }) => {
   const {
     currentPlayer,
@@ -94,10 +83,10 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
       <div className="grid grid-cols-2 gap-2.5 sm:gap-3">
         {/* JOUEUR NOIR Card */}
         <div
-          className={`relative px-3 py-2.5 rounded-xl border transition-all ${
+          className={`relative px-3 py-2.5 rounded-lg border transition-colors ${
             !isWhite && status === "playing"
-              ? "bg-[#181615] border-[#C8A452]/60 ring-1 ring-[#C8A452]/30 shadow-lg shadow-[#C8A452]/5"
-              : "bg-[#141312] border-white/[0.05] opacity-80"
+              ? "bg-[#181615] border-[#C8A452]/40 ring-1 ring-[#C8A452]/20"
+              : "bg-[#141312] border-white/[0.05] opacity-75"
           }`}
         >
           <div className="flex items-center justify-between gap-2">
@@ -107,50 +96,22 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
                 <div className="w-1 h-1 rounded-full bg-white/[0.15]" />
               </div>
               <div className="min-w-0">
-                <div className="text-[9px] text-[#9E9890] font-medium tracking-wider uppercase truncate">
-                  {gameMode === "ai" && aiPlayerColor === "black"
-                    ? "IA"
-                    : gameMode === "multiplayer"
-                    ? gameState.playerColor === "black"
-                      ? "Vous (Noirs)"
-                      : multiplayerOpponent?.username || "Adversaire"
-                    : "NOIR"}
+                <div className="text-[9px] text-[#9E9890] font-medium tracking-wider uppercase">
+                  {gameMode === "ai" && aiPlayerColor === "black" ? "IA" : "NOIR"}
                 </div>
-                <div className="text-xs font-serif font-semibold text-[#F5F3EE] truncate">
-                  {gameMode === "ai" && aiPlayerColor === "black"
-                    ? "IA"
-                    : gameMode === "multiplayer"
-                    ? gameState.playerColor === "black"
-                      ? "Vous"
-                      : multiplayerOpponent?.username || "Noir"
-                    : "Noir"}
+                <div className="text-xs font-serif font-semibold text-[#F5F3EE]">
+                  {gameMode === "ai" && aiPlayerColor === "black" ? "IA" : "Noir"}
                 </div>
               </div>
             </div>
 
             <div className="text-right shrink-0">
-              {gameMode === "multiplayer" && multiplayerClocks ? (
-                <div
-                  className={`px-2 py-1 rounded-lg font-mono text-xs sm:text-sm font-bold border transition-colors ${
-                    !isWhite && status === "playing"
-                      ? multiplayerClocks.black <= 10
-                        ? "bg-red-500/20 text-red-400 border-red-500/40 animate-pulse"
-                        : multiplayerClocks.black <= 30
-                        ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                        : "bg-white/[0.08] text-[#F5F3EE] border-[#C8A452]/40"
-                      : "bg-white/[0.03] text-[#9E9890] border-white/10"
-                  }`}
-                >
-                  {formatClock(multiplayerClocks.black)}
-                </div>
-              ) : (
-                <>
-                  <div className="text-lg font-serif font-semibold text-[#F5F3EE]">
-                    {pieceCounts.black}
-                  </div>
-                  <div className="text-[9px] text-[#9E9890]">pièces</div>
-                </>
-              )}
+              <div className="text-lg font-serif font-semibold text-[#F5F3EE]">
+                {pieceCounts.black}
+              </div>
+              <div className="text-[9px] text-[#9E9890]">
+                pièces
+              </div>
             </div>
           </div>
 
@@ -162,10 +123,10 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
 
         {/* JOUEUR BLANC Card */}
         <div
-          className={`relative px-3 py-2.5 rounded-xl border transition-all ${
+          className={`relative px-3 py-2.5 rounded-lg border transition-colors ${
             isWhite && status === "playing"
-              ? "bg-[#181615] border-[#C8A452]/60 ring-1 ring-[#C8A452]/30 shadow-lg shadow-[#C8A452]/5"
-              : "bg-[#141312] border-white/[0.05] opacity-80"
+              ? "bg-[#181615] border-[#C8A452]/40 ring-1 ring-[#C8A452]/20"
+              : "bg-[#141312] border-white/[0.05] opacity-75"
           }`}
         >
           <div className="flex items-center justify-between gap-2">
@@ -175,50 +136,22 @@ export const GameStatusPanel: React.FC<GameStatusPanelProps> = ({
                 <div className="w-1 h-1 rounded-full bg-black/[0.08]" />
               </div>
               <div className="min-w-0">
-                <div className="text-[9px] text-[#9E9890] font-medium tracking-wider uppercase truncate">
-                  {gameMode === "ai" && aiPlayerColor === "white"
-                    ? "IA"
-                    : gameMode === "multiplayer"
-                    ? gameState.playerColor === "white"
-                      ? "Vous (Blancs)"
-                      : multiplayerOpponent?.username || "Adversaire"
-                    : "BLANC"}
+                <div className="text-[9px] text-[#9E9890] font-medium tracking-wider uppercase">
+                  {gameMode === "ai" && aiPlayerColor === "white" ? "IA" : "BLANC"}
                 </div>
-                <div className="text-xs font-serif font-semibold text-[#F5F3EE] truncate">
-                  {gameMode === "ai" && aiPlayerColor === "white"
-                    ? "IA"
-                    : gameMode === "multiplayer"
-                    ? gameState.playerColor === "white"
-                      ? "Vous"
-                      : multiplayerOpponent?.username || "Blanc"
-                    : "Blanc"}
+                <div className="text-xs font-serif font-semibold text-[#F5F3EE]">
+                  {gameMode === "ai" && aiPlayerColor === "white" ? "IA" : "Blanc"}
                 </div>
               </div>
             </div>
 
             <div className="text-right shrink-0">
-              {gameMode === "multiplayer" && multiplayerClocks ? (
-                <div
-                  className={`px-2 py-1 rounded-lg font-mono text-xs sm:text-sm font-bold border transition-colors ${
-                    isWhite && status === "playing"
-                      ? multiplayerClocks.white <= 10
-                        ? "bg-red-500/20 text-red-400 border-red-500/40 animate-pulse"
-                        : multiplayerClocks.white <= 30
-                        ? "bg-amber-500/20 text-amber-400 border-amber-500/40"
-                        : "bg-white/[0.08] text-[#F5F3EE] border-[#C8A452]/40"
-                      : "bg-white/[0.03] text-[#9E9890] border-white/10"
-                  }`}
-                >
-                  {formatClock(multiplayerClocks.white)}
-                </div>
-              ) : (
-                <>
-                  <div className="text-lg font-serif font-semibold text-[#F5F3EE]">
-                    {pieceCounts.white}
-                  </div>
-                  <div className="text-[9px] text-[#9E9890]">pièces</div>
-                </>
-              )}
+              <div className="text-lg font-serif font-semibold text-[#F5F3EE]">
+                {pieceCounts.white}
+              </div>
+              <div className="text-[9px] text-[#9E9890]">
+                pièces
+              </div>
             </div>
           </div>
 

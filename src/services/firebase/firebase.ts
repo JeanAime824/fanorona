@@ -27,19 +27,14 @@ export const firebaseConfig = {
   storageBucket: env.VITE_FIREBASE_STORAGE_BUCKET || jsonConfig.storageBucket,
   messagingSenderId: env.VITE_FIREBASE_MESSAGING_SENDER_ID || jsonConfig.messagingSenderId,
   appId: env.VITE_FIREBASE_APP_ID || jsonConfig.appId,
-  measurementId: env.VITE_FIREBASE_MEASUREMENT_ID || (jsonConfig as any).measurementId || "",
   firestoreDatabaseId: jsonConfig.firestoreDatabaseId,
 };
 
 // Initialize Firebase App
 export const app = initializeApp(firebaseConfig);
 
-// Initialize Firestore (default or custom database)
-export const db =
-  firebaseConfig.firestoreDatabaseId &&
-  firebaseConfig.firestoreDatabaseId !== "(default)"
-    ? getFirestore(app, firebaseConfig.firestoreDatabaseId)
-    : getFirestore(app);
+// CRITICAL: Initialize Firestore with custom databaseId from firebaseConfig
+export const db = getFirestore(app, firebaseConfig.firestoreDatabaseId);
 
 // Initialize Firebase Auth
 export const auth = getAuth(app);

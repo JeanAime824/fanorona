@@ -277,22 +277,6 @@ export const api = {
     }
   },
 
-  async syncUser(user: UserProfile): Promise<UserProfile> {
-    try {
-      const res = await resilientFetch(`${API_BASE_URL}/api/users/sync`, {
-        method: "POST",
-        headers: getAuthHeaders(),
-        body: JSON.stringify(user),
-      });
-      if (res.ok) {
-        return await safeFetchJson<UserProfile>(res);
-      }
-    } catch (err) {
-      console.warn("[syncUser] Sync warning:", err);
-    }
-    return user;
-  },
-
   async updateProfile(data: { username?: string; avatar_url?: string }): Promise<UserProfile> {
     const res = await resilientFetch(`${API_BASE_URL}/api/profile/me`, {
       method: "PATCH",
@@ -304,9 +288,6 @@ export const api = {
 
   // Users & Search
   async searchUsers(query: string): Promise<UserSearchResult[]> {
-    const combinedMap = new Map<string, UserSearchResult>();
-
-    // 1. Fetch search results from Express REST API
     try {
       const res = await resilientFetch(
         `${API_BASE_URL}/api/users/search?q=${encodeURIComponent(query)}&_t=${Date.now()}`,
@@ -315,103 +296,24 @@ export const api = {
           cache: "no-store",
         }
       );
-      if (res.ok) {
-        const results = await safeFetchJson<UserSearchResult[]>(res);
-        if (Array.isArray(results)) {
-          for (const u of results) {
-            combinedMap.set(u.id, u);
-          }
-        }
-      }
+      if (!res.ok) return [];
+      return await safeFetchJson<UserSearchResult[]>(res);
     } catch {
-      // Ignore backend fetch errors
+      return [];
     }
-
-    // 2. Fetch search results from Cloud Firestore (universal database)
-    try {
-      const { searchFirestoreUsers } = await import("./firebase/syncService");
-      const firestoreUsers = await searchFirestoreUsers(query);
-      if (Array.isArray(firestoreUsers)) {
-        for (const u of firestoreUsers) {
-          let existingKey: string | null = null;
-          for (const [k, existing] of combinedMap.entries()) {
-            if (
-              existing.id === u.id ||
-              (existing.player_id && u.player_id && existing.player_id.toUpperCase() === u.player_id.toUpperCase()) ||
-              (existing.email && u.email && existing.email.toLowerCase() === u.email.toLowerCase())
-            ) {
-              existingKey = k;
-              break;
-            }
-          }
-
-          if (!existingKey) {
-            combinedMap.set(u.id, u);
-          } else {
-            const existing = combinedMap.get(existingKey)!;
-            combinedMap.set(existingKey, {
-              ...existing,
-              ...u,
-              id: existing.id,
-              player_id: existing.player_id || u.player_id,
-              status: existing.status === "ONLINE" || existing.status === "IN_GAME" ? existing.status : u.status,
-            });
-          }
-        }
-      }
-    } catch (err) {
-      console.warn("[searchUsers] Firestore search error:", err);
-    }
-
-    return Array.from(combinedMap.values());
   },
 
   async getCommunityUsers(): Promise<UserSearchResult[]> {
-    const combinedMap = new Map<string, UserSearchResult>();
-
-    // 1. Fetch from server backend if available
     try {
       const res = await resilientFetch(`${API_BASE_URL}/api/users/community?_t=${Date.now()}`, {
         headers: getAuthHeaders(),
         cache: "no-store",
       });
-      if (res.ok) {
-        const serverUsers = await safeFetchJson<UserSearchResult[]>(res);
-        if (Array.isArray(serverUsers)) {
-          for (const u of serverUsers) {
-            combinedMap.set(u.id, u);
-          }
-        }
-      }
+      if (!res.ok) return [];
+      return await safeFetchJson<UserSearchResult[]>(res);
     } catch {
-      // Ignore backend fetch errors
+      return [];
     }
-
-    // 2. Fetch from Cloud Firestore (universal cloud database across all players)
-    try {
-      const { getFirestoreCommunityUsers } = await import("./firebase/syncService");
-      const firestoreUsers = await getFirestoreCommunityUsers();
-      if (Array.isArray(firestoreUsers)) {
-        for (const u of firestoreUsers) {
-          if (!combinedMap.has(u.id)) {
-            combinedMap.set(u.id, u);
-          } else {
-            const existing = combinedMap.get(u.id)!;
-            combinedMap.set(u.id, { ...existing, ...u });
-          }
-        }
-      }
-    } catch (err) {
-      console.warn("[getCommunityUsers] Firestore error:", err);
-    }
-
-    return Array.from(combinedMap.values()).sort((a, b) => {
-      const order = { ONLINE: 0, IN_GAME: 1, OFFLINE: 2 };
-      const diff =
-        (order[a.status as keyof typeof order] ?? 2) - (order[b.status as keyof typeof order] ?? 2);
-      if (diff !== 0) return diff;
-      return (b.isa || 1200) - (a.isa || 1200);
-    });
   },
 
   async getPublicProfile(playerId: string): Promise<UserSearchResult | null> {
@@ -419,30 +321,11 @@ export const api = {
       const res = await resilientFetch(`${API_BASE_URL}/api/users/${encodeURIComponent(playerId)}`, {
         headers: getAuthHeaders(),
       });
-      if (res.ok) {
-        return await safeFetchJson<UserSearchResult>(res);
-      }
+      if (!res.ok) return null;
+      return await safeFetchJson<UserSearchResult>(res);
     } catch {
-      // Backend error
+      return null;
     }
-
-    // Firestore fallback
-    try {
-      const { searchFirestoreUsers } = await import("./firebase/syncService");
-      const list = await searchFirestoreUsers(playerId);
-      const cleanTarget = playerId.trim().toUpperCase();
-      const found = list.find(
-        (u) =>
-          u.player_id.toUpperCase() === cleanTarget ||
-          u.id === playerId ||
-          u.username.toLowerCase() === playerId.toLowerCase()
-      );
-      if (found) return found;
-    } catch {
-      // Ignore
-    }
-
-    return null;
   },
 
   // Leaderboard
@@ -553,21 +436,13 @@ export const api = {
   },
 
   // Challenges
-  async sendChallenge(params: { target_user_id?: string; player_id?: string; game_type?: string; time_control?: number; player_color?: string }) {
+  async sendChallenge(params: { target_user_id?: string; player_id?: string; game_type?: string; time_control?: number }) {
     const res = await resilientFetch(`${API_BASE_URL}/api/challenges/send`, {
       method: "POST",
       headers: getAuthHeaders(),
       body: JSON.stringify(params),
     });
     return safeFetchJson(res, "Impossible d'envoyer l'invitation");
-  },
-
-  async cancelChallenge(inviteId: string) {
-    const res = await resilientFetch(`${API_BASE_URL}/api/challenges/${inviteId}/cancel`, {
-      method: "POST",
-      headers: getAuthHeaders(),
-    });
-    return safeFetchJson(res, "Impossible d'annuler le défi");
   },
 
   async acceptChallenge(inviteId: string) {

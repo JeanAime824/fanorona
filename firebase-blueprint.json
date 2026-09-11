@@ -8,16 +8,11 @@
         "id": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "displayName": { "type": "string" },
-        "username": { "type": "string" },
-        "player_id": { "type": "string" },
-        "isa": { "type": "number" },
-        "games_played": { "type": "number" },
-        "win_rate": { "type": "number" },
         "photoURL": { "type": "string" },
         "createdAt": { "type": "string" },
         "updatedAt": { "type": "string" }
       },
-      "required": ["id", "email"]
+      "required": ["id", "email", "displayName"]
     },
     "UserStats": {
       "title": "UserStats",

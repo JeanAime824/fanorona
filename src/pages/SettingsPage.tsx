@@ -50,9 +50,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   stats,
 }) => {
   const [isResetConfirmOpen, setIsResetConfirmOpen] = useState(false);
-  const [isClearDbConfirmOpen, setIsClearDbConfirmOpen] = useState(false);
-  const [isClearingDb, setIsClearingDb] = useState(false);
-  const [clearDbMessage, setClearDbMessage] = useState<string | null>(null);
   const [currentStats, setCurrentStats] = useState<GameStats>(stats);
   const [themeFilter, setThemeFilter] = useState<"all" | "wood" | "modern">("all");
   const { user, signInWithGoogle, logout } = useAuth();
@@ -95,22 +92,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
     storageService.saveStats(DEFAULT_STATS);
     setCurrentStats(DEFAULT_STATS);
     setIsResetConfirmOpen(false);
-  };
-
-  const handleClearServerDb = async () => {
-    setIsClearingDb(true);
-    try {
-      const res = await fetch("/api/admin/clear-db", { method: "POST" });
-      if (res.ok) {
-        setClearDbMessage("Base de données serveur réinitialisée avec succès !");
-        setTimeout(() => setClearDbMessage(null), 4000);
-      }
-    } catch (e) {
-      console.error("Erreur réinitialisation base de données:", e);
-    } finally {
-      setIsClearingDb(false);
-      setIsClearDbConfirmOpen(false);
-    }
   };
 
   const currentTheme = settings.theme || "malagasy_wood";
@@ -771,12 +752,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               </div>
             </div>
 
-            <div className="pt-2 flex flex-wrap items-center justify-end gap-2">
-              {clearDbMessage && (
-                <span className="text-xs text-emerald-400 font-medium mr-auto animate-fadeIn">
-                  {clearDbMessage}
-                </span>
-              )}
+            <div className="pt-2 flex justify-end">
               <Button
                 variant="outline"
                 size="sm"
@@ -784,14 +760,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
                 icon={<RotateCcw className="w-3.5 h-3.5" />}
               >
                 Réinitialiser les stats
-              </Button>
-              <Button
-                variant="danger"
-                size="sm"
-                onClick={() => setIsClearDbConfirmOpen(true)}
-                icon={<Database className="w-3.5 h-3.5" />}
-              >
-                Vider la base de données
               </Button>
             </div>
           </Card>
@@ -878,37 +846,6 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
               onClick={handleResetStats}
             >
               Effacer les données
-            </Button>
-          </div>
-        </div>
-      </Modal>
-
-      {/* Confirmation modal for server db clear */}
-      <Modal
-        isOpen={isClearDbConfirmOpen}
-        onClose={() => setIsClearDbConfirmOpen(false)}
-        title="Vider la base de données serveur ?"
-        maxWidth="sm"
-      >
-        <div className="space-y-4 text-xs text-white/70 leading-relaxed">
-          <p>
-            Cette action réinitialisera complètement tous les comptes utilisateurs, invitations de jeu, parties multijoueur et classements enregistrés sur le serveur.
-          </p>
-          <div className="flex justify-end gap-3 pt-2">
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => setIsClearDbConfirmOpen(false)}
-            >
-              Annuler
-            </Button>
-            <Button
-              variant="danger"
-              size="sm"
-              loading={isClearingDb}
-              onClick={handleClearServerDb}
-            >
-              Confirmer et vider
             </Button>
           </div>
         </div>
