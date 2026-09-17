@@ -137,6 +137,11 @@ interface GameDbRecord {
   finished_at: string | null;
   game_state: GameState;
   moves: GameMoveDbRecord[];
+  clocks?: {
+    white: number;
+    black: number;
+    last_tick: number;
+  };
 }
 
 // In-Memory Database collections with persistent disk fallback
@@ -1796,12 +1801,30 @@ async function startServer() {
       game.player_black_name = joinerName;
       game.player_black_isa = joinerIsa;
       game.status = "active";
+      game.clocks = {
+        white: game.time_control,
+        black: game.time_control,
+        last_tick: Date.now(),
+      };
     } else if (!game.player_white_id && game.player_black_id !== joinerId) {
       game.player_white_id = joinerId;
       game.player_white_name = joinerName;
       game.player_white_isa = joinerIsa;
       game.status = "active";
+      game.clocks = {
+        white: game.time_control,
+        black: game.time_control,
+        last_tick: Date.now(),
+      };
     }
+
+    saveToDisk();
+
+    io.to(game.id).emit("game_room_state", game);
+    if (game.unique_game_code) {
+      io.to(game.unique_game_code).emit("game_room_state", game);
+    }
+    io.emit("lobby_updated");
 
     res.json({ success: true, game });
   });
@@ -1905,6 +1928,20 @@ async function startServer() {
           g.player_white_isa = playerIsa;
         }
         g.status = "active";
+        g.clocks = {
+          white: g.time_control,
+          black: g.time_control,
+          last_tick: Date.now(),
+        };
+
+        saveToDisk();
+
+        io.to(g.id).emit("game_room_state", g);
+        if (g.unique_game_code) {
+          io.to(g.unique_game_code).emit("game_room_state", g);
+        }
+        io.emit("lobby_updated");
+
         return res.json({ matched: true, game: g });
       }
     }
@@ -1938,6 +1975,8 @@ async function startServer() {
 
     games.set(gameId, newGame);
     gamesByCode.set(gameCode, newGame);
+    saveToDisk();
+    io.emit("lobby_updated");
 
     res.status(201).json({ matched: false, game: newGame });
   });
@@ -2066,13 +2105,26 @@ async function startServer() {
         const uname = user?.username || user?.displayName || user?.name;
         const uisa = user?.isa || 1200;
 
-        if (uid) {
-          if (!game.player_black_id && game.player_white_id !== uid) {
-            game.player_black_id = uid;
-            game.player_black_name = uname || "Joueur Noir";
-            game.player_black_isa = uisa;
-            game.status = "active";
+        const guestId = `guest_${socket.id.substring(0, 6)}`;
+        const effectiveUid = uid || guestId;
+        const effectiveName = uname || `Joueur ${socket.id.substring(0, 4)}`;
+
+        if (!game.player_black_id && game.player_white_id !== effectiveUid) {
+          game.player_black_id = effectiveUid;
+          game.player_black_name = effectiveName;
+          game.player_black_isa = uisa;
+          game.status = "active";
+          if (!game.clocks) {
+            game.clocks = {
+              white: game.time_control,
+              black: game.time_control,
+              last_tick: Date.now(),
+            };
           }
+          io.emit("lobby_updated");
+        }
+
+        if (uid) {
           const u = users.get(uid);
           if (u) {
             u.status = "IN_GAME";
@@ -2122,6 +2174,9 @@ async function startServer() {
         game.game_state = nextState;
         game.current_turn = nextState.currentPlayer;
         game.turn_number = nextState.turnNumber;
+        if (game.clocks) {
+          game.clocks.last_tick = Date.now();
+        }
 
         // Record Move in Game History
         const moveRecord: GameMoveDbRecord = {
@@ -2266,6 +2321,9 @@ async function startServer() {
         const nextState = endTurn(game.game_state);
         game.game_state = nextState;
         game.current_turn = nextState.currentPlayer;
+        if (game.clocks) {
+          game.clocks.last_tick = Date.now();
+        }
         saveToDisk();
 
         const emitToGame = (event: string, payload: any) => {
@@ -2376,6 +2434,61 @@ async function startServer() {
       }
     });
   });
+
+  // Background Clock Ticker for Active Multiplayer Games
+  setInterval(() => {
+    const now = Date.now();
+    for (const game of games.values()) {
+      if (game.status === "active" && game.clocks) {
+        const elapsed = Math.floor((now - game.clocks.last_tick) / 1000);
+        if (elapsed >= 1) {
+          game.clocks.last_tick = now;
+          if (game.current_turn === "white") {
+            game.clocks.white = Math.max(0, game.clocks.white - elapsed);
+          } else {
+            game.clocks.black = Math.max(0, game.clocks.black - elapsed);
+          }
+
+          const clockPayload = {
+            gameId: game.id,
+            white: game.clocks.white,
+            black: game.clocks.black,
+          };
+
+          io.to(game.id).emit("clock_tick", clockPayload);
+          if (game.unique_game_code) {
+            io.to(game.unique_game_code).emit("clock_tick", clockPayload);
+          }
+
+          // Timeout Check
+          if (game.clocks[game.current_turn] <= 0) {
+            const loser = game.current_turn;
+            const winner: Player = loser === "white" ? "black" : "white";
+            game.status = "finished";
+            game.winner = winner;
+            game.finished_at = new Date().toISOString();
+            game.game_state.status = "game_over";
+            game.game_state.winner = winner;
+            game.game_state.reason = `Temps écoulé (${loser === "white" ? "Blancs" : "Noirs"})`;
+
+            saveToDisk();
+
+            const overPayload = {
+              winner,
+              reason: `Temps écoulé (${loser === "white" ? "Blancs" : "Noirs"})`,
+            };
+
+            io.to(game.id).emit("game_over", overPayload);
+            io.to(game.id).emit("game_room_state", game);
+            if (game.unique_game_code) {
+              io.to(game.unique_game_code).emit("game_over", overPayload);
+              io.to(game.unique_game_code).emit("game_room_state", game);
+            }
+          }
+        }
+      }
+    }
+  }, 1000);
 
   server.listen(PORT, "0.0.0.0", () => {
     console.log(`[Server] Fanorona Full-Stack Engine running on http://0.0.0.0:${PORT}`);
