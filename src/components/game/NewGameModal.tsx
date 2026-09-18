@@ -51,6 +51,8 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
   const [friendsList, setFriendsList] = useState<{ id: string; friend: any }[]>([]);
   const [lobbyGames, setLobbyGames] = useState<any[]>([]);
   const [isCreatingGame, setIsCreatingGame] = useState(false);
+  const [joinCodeInput, setJoinCodeInput] = useState("");
+  const [joinError, setJoinError] = useState<string | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -103,7 +105,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
           false,
           timeLimit,
           gameId,
-          selectedFriendId,
+          selectedColor,
           friendObj?.username || "Ami",
           friendObj?.isa || 1200
         );
@@ -134,7 +136,7 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
           false,
           timeLimit,
           gameId,
-          undefined,
+          myColor,
           oppName,
           oppIsa
         );
@@ -284,15 +286,16 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                       onClick={async () => {
                         setIsCreatingGame(true);
                         try {
-                          await api.joinGame(game.id, user?.displayName || user?.username || "Joueur");
+                          const joinRes = await api.joinGame(game.id, user?.displayName || user?.username || "Joueur");
+                          const myAssignedColor = joinRes.color || "black";
                           onStartGame(
                             "multiplayer",
                             "medium",
-                            "black",
+                            myAssignedColor,
                             false,
                             game.time_control,
                             game.id,
-                            undefined,
+                            myAssignedColor,
                             game.host_name,
                             game.host_isa
                           );
@@ -311,6 +314,64 @@ export const NewGameModal: React.FC<NewGameModalProps> = ({
                 ))}
               </div>
             )}
+
+            {/* Rejoindre via Code Secret */}
+            <div className="pt-2 border-t border-white/10">
+              <label className="block text-[10px] font-semibold uppercase tracking-wider text-white/50 mb-1.5">
+                Ou rejoindre avec un code secret
+              </label>
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  value={joinCodeInput}
+                  onChange={(e) => {
+                    setJoinCodeInput(e.target.value.toUpperCase());
+                    setJoinError(null);
+                  }}
+                  placeholder="Ex: GAME-SIC7 ou SIC7"
+                  className="flex-1 px-3 py-2 text-xs rounded-xl bg-white/[0.04] border border-white/10 text-white placeholder-white/30 focus:outline-none focus:border-[#C8A452]"
+                />
+                <button
+                  type="button"
+                  disabled={!joinCodeInput.trim() || isCreatingGame}
+                  onClick={async () => {
+                    if (!joinCodeInput.trim()) return;
+                    setIsCreatingGame(true);
+                    setJoinError(null);
+                    try {
+                      const cleanCode = joinCodeInput.trim();
+                      const joinRes = await api.joinGame(cleanCode, user?.displayName || user?.username || "Joueur");
+                      const matchedGame = joinRes.game;
+                      const myColor = joinRes.color || "black";
+                      const oppName = myColor === "white" ? matchedGame?.player_black_name : matchedGame?.player_white_name;
+                      const oppIsa = myColor === "white" ? matchedGame?.player_black_isa : matchedGame?.player_white_isa;
+                      onStartGame(
+                        "multiplayer",
+                        "medium",
+                        myColor,
+                        false,
+                        matchedGame?.time_control || 300,
+                        matchedGame?.id || cleanCode,
+                        myColor,
+                        oppName || "Hôte",
+                        oppIsa || 1200
+                      );
+                      onClose();
+                    } catch (err: any) {
+                      setJoinError(err?.message || "Code de partie introuvable ou déjà complète.");
+                    } finally {
+                      setIsCreatingGame(false);
+                    }
+                  }}
+                  className="px-4 py-2 rounded-xl bg-[#C8A452] hover:bg-[#D4AF37] disabled:opacity-50 text-black text-xs font-bold transition-all cursor-pointer"
+                >
+                  Rejoindre
+                </button>
+              </div>
+              {joinError && (
+                <p className="text-[10px] text-red-400 mt-1">{joinError}</p>
+              )}
+            </div>
           </div>
         )}
 

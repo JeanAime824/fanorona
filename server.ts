@@ -649,14 +649,50 @@ async function startServer() {
     const authHeader = req.headers.authorization;
     if (authHeader && authHeader.startsWith("Bearer ")) {
       const token = authHeader.split(" ")[1];
-      try {
-        const decoded = jwt.verify(token, JWT_SECRET) as { userId: string };
-        const user = users.get(decoded.userId);
-        if (user) {
-          (req as any).user = user;
+      let userId: string | null = null;
+      let username = "Joueur";
+
+      if (token.startsWith("gst_token_")) {
+        userId = token.replace("gst_token_", "");
+        username = "Invité";
+      } else {
+        try {
+          const decoded = jwt.verify(token, JWT_SECRET) as { userId: string; username?: string };
+          userId = decoded.userId;
+          username = decoded.username || "Joueur";
+        } catch {
+          if (token.startsWith("gst_") || token.startsWith("usr_")) {
+            userId = token;
+          }
         }
-      } catch {
-        // Continue unauthenticated
+      }
+
+      if (userId) {
+        let user = users.get(userId);
+        if (!user) {
+          const allPlayerIds = new Set(usersByPlayerId.keys());
+          const playerId = generate6CharPlayerId(allPlayerIds);
+          user = {
+            id: userId,
+            username: username || `Joueur_${playerId.substring(0, 4)}`,
+            email: `${userId}@fanorona.local`,
+            password_hash: "",
+            player_id: playerId,
+            isa: 1200,
+            games_played: 0,
+            wins: 0,
+            losses: 0,
+            draws: 0,
+            avatar_url: `https://api.dicebear.com/7.x/bottts/svg?seed=${encodeURIComponent(username || userId)}`,
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+            last_activity: new Date().toISOString(),
+            status: "ONLINE",
+          };
+          users.set(userId, user);
+          usersByPlayerId.set(playerId, user);
+        }
+        (req as any).user = user;
       }
     }
     next();
@@ -1764,9 +1800,19 @@ async function startServer() {
     res.json(waitingList);
   });
 
+  const findGameByIdOrCode = (key: string): GameDbRecord | undefined => {
+    if (!key) return undefined;
+    const clean = key.toString().trim();
+    return (
+      games.get(clean) ||
+      gamesByCode.get(clean.toUpperCase()) ||
+      gamesByCode.get(`GAME-${clean.toUpperCase()}`)
+    );
+  };
+
   app.get(["/api/games/:id", "/api/games/:id/"], (req: Request, res: Response) => {
     const { id } = req.params;
-    const game = games.get(id) || gamesByCode.get(id.toUpperCase());
+    const game = findGameByIdOrCode(id);
     if (!game) {
       return res.status(404).json({ error: "Partie introuvable." });
     }
@@ -1775,7 +1821,7 @@ async function startServer() {
 
   app.get(["/api/games/:id/moves", "/api/games/:id/moves/"], (req: Request, res: Response) => {
     const { id } = req.params;
-    const game = games.get(id) || gamesByCode.get(id.toUpperCase());
+    const game = findGameByIdOrCode(id);
     if (!game) {
       return res.status(404).json({ error: "Partie introuvable." });
     }
@@ -1787,7 +1833,7 @@ async function startServer() {
     const currentUser = (req as any).user as UserDbRecord | undefined;
     const { player_name } = req.body;
 
-    const game = games.get(id) || gamesByCode.get(id.toUpperCase());
+    const game = findGameByIdOrCode(id);
     if (!game) {
       return res.status(404).json({ error: "Partie introuvable." });
     }
@@ -1796,26 +1842,37 @@ async function startServer() {
     const joinerName = currentUser ? currentUser.username : player_name || "Joueur";
     const joinerIsa = currentUser ? currentUser.isa : 1200;
 
-    if (!game.player_black_id && game.player_white_id !== joinerId) {
+    let assignedColor: "white" | "black" = "black";
+    if (game.player_white_id === joinerId) {
+      assignedColor = "white";
+    } else if (game.player_black_id === joinerId) {
+      assignedColor = "black";
+    } else if (!game.player_black_id && game.player_white_id !== joinerId) {
       game.player_black_id = joinerId;
       game.player_black_name = joinerName;
       game.player_black_isa = joinerIsa;
       game.status = "active";
-      game.clocks = {
-        white: game.time_control,
-        black: game.time_control,
-        last_tick: Date.now(),
-      };
+      assignedColor = "black";
+      if (!game.clocks) {
+        game.clocks = {
+          white: game.time_control,
+          black: game.time_control,
+          last_tick: Date.now(),
+        };
+      }
     } else if (!game.player_white_id && game.player_black_id !== joinerId) {
       game.player_white_id = joinerId;
       game.player_white_name = joinerName;
       game.player_white_isa = joinerIsa;
       game.status = "active";
-      game.clocks = {
-        white: game.time_control,
-        black: game.time_control,
-        last_tick: Date.now(),
-      };
+      assignedColor = "white";
+      if (!game.clocks) {
+        game.clocks = {
+          white: game.time_control,
+          black: game.time_control,
+          last_tick: Date.now(),
+        };
+      }
     }
 
     saveToDisk();
@@ -1826,13 +1883,13 @@ async function startServer() {
     }
     io.emit("lobby_updated");
 
-    res.json({ success: true, game });
+    res.json({ success: true, game, color: assignedColor });
   });
 
   app.post(["/api/games/:id/move", "/api/games/:id/move/"], optionalJwt, (req: Request, res: Response) => {
     const { id } = req.params;
     const move = (req.body.move || req.body) as Move;
-    const game = games.get(id) || gamesByCode.get(id.toUpperCase());
+    const game = findGameByIdOrCode(id);
     if (!game) return res.status(404).json({ error: "Partie introuvable" });
     if (!move || !move.from || !move.to) {
       return res.status(400).json({ error: "Structure de coup invalide" });
@@ -1876,7 +1933,7 @@ async function startServer() {
 
   app.post(["/api/games/:id/end-turn", "/api/games/:id/end-turn/"], optionalJwt, (req: Request, res: Response) => {
     const { id } = req.params;
-    const game = games.get(id) || gamesByCode.get(id.toUpperCase());
+    const game = findGameByIdOrCode(id);
     if (!game) return res.status(404).json({ error: "Partie introuvable" });
 
     try {
@@ -1985,7 +2042,7 @@ async function startServer() {
   app.post(["/api/games/:id/match-bot", "/api/games/:id/match-bot/"], (req: Request, res: Response) => {
     const { id } = req.params;
     const cleanKey = id?.toString?.().trim();
-    const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
+    const game = findGameByIdOrCode(cleanKey);
 
     if (!game) {
       return res.status(404).json({ error: "Partie introuvable." });
@@ -2092,7 +2149,7 @@ async function startServer() {
     socket.on("join_game_room", ({ gameId, user }) => {
       if (!gameId) return;
       const cleanKey = gameId.toString().trim();
-      const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
+      const game = findGameByIdOrCode(cleanKey);
 
       socket.join(cleanKey);
       if (game) {
@@ -2109,19 +2166,35 @@ async function startServer() {
         const effectiveUid = uid || guestId;
         const effectiveName = uname || `Joueur ${socket.id.substring(0, 4)}`;
 
-        if (!game.player_black_id && game.player_white_id !== effectiveUid) {
-          game.player_black_id = effectiveUid;
-          game.player_black_name = effectiveName;
-          game.player_black_isa = uisa;
-          game.status = "active";
-          if (!game.clocks) {
-            game.clocks = {
-              white: game.time_control,
-              black: game.time_control,
-              last_tick: Date.now(),
-            };
+        // Only assign seat if game is waiting and this user is not already seated
+        if (game.status === "waiting") {
+          if (game.player_white_id && !game.player_black_id && game.player_white_id !== effectiveUid) {
+            game.player_black_id = effectiveUid;
+            game.player_black_name = effectiveName;
+            game.player_black_isa = uisa;
+            game.status = "active";
+            if (!game.clocks) {
+              game.clocks = {
+                white: game.time_control,
+                black: game.time_control,
+                last_tick: Date.now(),
+              };
+            }
+            io.emit("lobby_updated");
+          } else if (game.player_black_id && !game.player_white_id && game.player_black_id !== effectiveUid) {
+            game.player_white_id = effectiveUid;
+            game.player_white_name = effectiveName;
+            game.player_white_isa = uisa;
+            game.status = "active";
+            if (!game.clocks) {
+              game.clocks = {
+                white: game.time_control,
+                black: game.time_control,
+                last_tick: Date.now(),
+              };
+            }
+            io.emit("lobby_updated");
           }
-          io.emit("lobby_updated");
         }
 
         if (uid) {
@@ -2152,7 +2225,7 @@ async function startServer() {
     // Make move (Validated by server authority)
     socket.on("make_move", ({ gameId, move }: { gameId: string; move: Move }) => {
       const cleanKey = gameId?.toString?.().trim();
-      const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
+      const game = findGameByIdOrCode(cleanKey);
       if (!game) {
         socket.emit("error", { message: "Partie introuvable" });
         return;
@@ -2314,7 +2387,7 @@ async function startServer() {
     // End Turn
     socket.on("end_turn", ({ gameId }) => {
       const cleanKey = gameId?.toString?.().trim();
-      const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
+      const game = findGameByIdOrCode(cleanKey);
       if (!game) return;
 
       try {
@@ -2350,7 +2423,7 @@ async function startServer() {
     // Resign
     socket.on("resign", ({ gameId, player }) => {
       const cleanKey = gameId?.toString?.().trim();
-      const game = games.get(cleanKey) || gamesByCode.get(cleanKey.toUpperCase());
+      const game = findGameByIdOrCode(cleanKey);
       if (!game) return;
 
       try {

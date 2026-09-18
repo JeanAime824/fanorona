@@ -57,24 +57,28 @@ class SocketService {
     const socket = this.connect();
     socket.off("challenge_accepted");
     socket.on("challenge_accepted", callback);
+    return () => socket.off("challenge_accepted", callback);
   }
 
   public onChallengeRejected(callback: (data: { invite_id: string; opponent_name: string }) => void) {
     const socket = this.connect();
     socket.off("challenge_rejected");
     socket.on("challenge_rejected", callback);
+    return () => socket.off("challenge_rejected", callback);
   }
 
   public onGameInvitationReceived(callback: (data: any) => void) {
     const socket = this.connect();
     socket.off("game_invitation_received");
     socket.on("game_invitation_received", callback);
+    return () => socket.off("game_invitation_received", callback);
   }
 
   public onNotificationReceived(callback: (notif: any) => void) {
     const socket = this.connect();
     socket.off("notification_received");
     socket.on("notification_received", callback);
+    return () => socket.off("notification_received", callback);
   }
 
   public createGame(playerId: string, playerName: string, playerColor: Player = "white", timeControl: number = 30) {

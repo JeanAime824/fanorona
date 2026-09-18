@@ -94,33 +94,8 @@ export const GamePage: React.FC = () => {
         username: user?.username || user?.displayName,
         isa: user?.isa,
       });
-      
-      multiActions.updateLiveGame(
-        gameState.multiplayerGameId,
-        gameState,
-        gameState.currentPlayer,
-        gameState.status,
-        gameState.winner,
-        timeRemaining && gameState.gameMode === "multiplayer" 
-          ? { 
-              white: gameState.currentPlayer === "white" ? timeRemaining : -1,
-              black: gameState.currentPlayer === "black" ? timeRemaining : -1
-            }
-          : undefined
-      );
     }
   }, [gameState.gameMode, gameState.multiplayerGameId, user?.id]);
-
-  // End multiplayer game on game over
-  useEffect(() => {
-    if (gameState.status === "game_over" && gameState.gameMode === "multiplayer" && multiplayerGameId) {
-      multiActions.endLiveGame(
-        multiplayerGameId,
-        gameState.winner,
-        gameState.reason || "game_over"
-      );
-    }
-  }, [gameState.status, gameState.gameMode]);
 
   // Trigger celebration overlay or game over modal when status changes to game_over
   useEffect(() => {
@@ -410,7 +385,7 @@ export const GamePage: React.FC = () => {
           speedMode?: boolean,
           timeLimit?: number,
           multiplayerGameId?: string,
-          multiplayerOpponentId?: string,
+          onlinePlayerColor?: Player,
           opponentName?: string,
           opponentIsa?: number
         ) => {
@@ -421,7 +396,7 @@ export const GamePage: React.FC = () => {
             speedMode,
             timeLimit,
             multiplayerGameId,
-            playerColor,
+            onlinePlayerColor || playerColor,
             opponentName,
             opponentIsa
           );

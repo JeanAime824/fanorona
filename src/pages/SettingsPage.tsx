@@ -34,7 +34,7 @@ import { Modal } from "../components/ui/Modal";
 import { useAuth } from "../context/AuthContext";
 import { AiDifficulty, BoardTheme, GameSettings, GameStats, PieceTexture } from "../game/types/gameTypes";
 import { sound } from "../services/audio/soundSynthesizer";
-import { syncStatsAndSettingsToFirestore, loadMatchHistoryFromFirestore, CloudGameRecord } from "../services/firebase/syncService";
+import { syncStatsAndSettings, loadMatchHistory, CloudGameRecord } from "../services/storage/localSyncService";
 import { storageService, DEFAULT_STATS } from "../services/storage/storageService";
 import { BOARD_THEMES } from "../services/theme/boardThemes";
 
@@ -61,7 +61,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   React.useEffect(() => {
     if (user) {
       setIsLoadingMatches(true);
-      loadMatchHistoryFromFirestore(5)
+      loadMatchHistory(5)
         .then((records) => setRecentMatches(records))
         .catch((err) => console.warn("Could not load match history:", err))
         .finally(() => setIsLoadingMatches(false));
@@ -73,7 +73,7 @@ export const SettingsPage: React.FC<SettingsPageProps> = ({
   const handleManualSync = async () => {
     try {
       setIsSyncing(true);
-      await syncStatsAndSettingsToFirestore(currentStats, settings);
+      await syncStatsAndSettings(currentStats, settings);
       setSyncSuccess(true);
       setTimeout(() => setSyncSuccess(false), 3000);
     } catch (err) {

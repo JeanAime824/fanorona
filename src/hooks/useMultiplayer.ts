@@ -1,27 +1,11 @@
 /**
  * @file useMultiplayer.ts
  * Hook for managing multiplayer features: friends, challenges, and live games.
+ * 100% backed by the local authoritative server (Express + Socket.io).
  */
 
-import { useEffect, useState } from "react";
-import {
-  acceptChallenge,
-  acceptFriendRequest,
-  createChallenge,
-  createGameSession,
-  endGameSession,
-  getFriends,
-  getPendingChallenges,
-  getPendingFriendRequests,
-  rejectChallenge,
-  rejectFriendRequest,
-  sendFriendRequest,
-  subscribeToGameSession,
-  subscribeToNotifications,
-  updateGameSession,
-  getUserNotifications,
-  markNotificationAsRead,
-} from "../services/firebase/multiplayerService";
+import { useEffect, useState, useCallback, useRef } from "react";
+import { api } from "../services/api";
 import { socketService } from "../services/socketService";
 import {
   ChallengeInvitation,
@@ -92,116 +76,169 @@ export function useMultiplayer(
     error: null,
   });
 
-  // Subscribe to notifications and challenges in real-time
+  const isMountedRef = useRef(true);
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // Refresh friends from local backend
+  const refreshFriends = useCallback(async () => {
+    try {
+      const [friendsRes, requestsRes] = await Promise.allSettled([
+        api.getFriends(),
+        api.getFriendRequests(),
+      ]);
+
+      const formattedFriends: FriendshipRecord[] = [];
+      if (friendsRes.status === "fulfilled" && Array.isArray(friendsRes.value)) {
+        friendsRes.value.forEach((item: any) => {
+          formattedFriends.push({
+            id: item.id || `fr_${item.friend?.id || Math.random()}`,
+            userId: userId || "",
+            friendId: item.friend?.id || item.friend?.player_id || "",
+            status: "accepted",
+            createdAt: item.created_at || new Date().toISOString(),
+            updatedAt: item.created_at || new Date().toISOString(),
+          });
+        });
+      }
+
+      const formattedRequests: FriendshipRecord[] = [];
+      if (requestsRes.status === "fulfilled" && Array.isArray(requestsRes.value)) {
+        requestsRes.value.forEach((item: any) => {
+          formattedRequests.push({
+            id: item.id || `req_${item.from_user?.id || Math.random()}`,
+            userId: item.from_user?.id || "",
+            friendId: userId || "",
+            status: "pending",
+            createdAt: item.created_at || new Date().toISOString(),
+            updatedAt: item.created_at || new Date().toISOString(),
+          });
+        });
+      }
+
+      if (isMountedRef.current) {
+        setState((prev) => ({
+          ...prev,
+          friends: formattedFriends,
+          pendingFriendRequests: formattedRequests,
+          error: null,
+        }));
+      }
+    } catch (err: any) {
+      console.warn("Erreur chargement amis:", err);
+    }
+  }, [userId]);
+
+  // Refresh challenges & notifications from local backend
+  const refreshChallenges = useCallback(async () => {
+    try {
+      const notifsRes = await api.getNotifications().catch(() => []);
+      if (Array.isArray(notifsRes)) {
+        const challenges: ChallengeInvitation[] = [];
+        const notifs: NotificationPayload[] = [];
+
+        notifsRes.forEach((n: any) => {
+          notifs.push({
+            id: n.id,
+            userId: userId || "",
+            type: n.type === "game_invite" ? "challenge_received" : "friend_request",
+            senderId: n.from_user?.id || "",
+            senderName: n.from_user?.username || n.title || "Joueur",
+            senderPhoto: n.from_user?.avatar_url || "",
+            title: n.title || "Notification",
+            message: n.message || "",
+            actionId: n.data?.game_id || n.data?.invite_id,
+            read: n.read || false,
+            createdAt: n.created_at || new Date().toISOString(),
+          });
+
+          if (n.type === "game_invite" && !n.read) {
+            challenges.push({
+              id: n.id,
+              challengerId: n.from_user?.id || "",
+              challengerName: n.from_user?.username || "Ami",
+              challengerPhoto: n.from_user?.avatar_url || "",
+              challengedPlayerId: userId || "",
+              status: "pending",
+              playerColor: "random",
+              timeControl: n.data?.time_control || 300,
+              createdAt: n.created_at || new Date().toISOString(),
+              expiresAt: new Date(Date.now() + 5 * 60 * 1000).toISOString(),
+              gameId: n.data?.game_id,
+            });
+          }
+        });
+
+        if (isMountedRef.current) {
+          setState((prev) => ({
+            ...prev,
+            pendingChallenges: challenges,
+            notifications: notifs,
+            error: null,
+          }));
+        }
+      }
+    } catch (err: any) {
+      console.warn("Erreur chargement notifications:", err);
+    }
+  }, [userId]);
+
+  // Listen to real-time socket events
   useEffect(() => {
     if (!userId) return;
 
-    const unsubNotifications = subscribeToNotifications(userId, (notifications) => {
-      setState((prev) => ({ ...prev, notifications }));
+    refreshFriends();
+    refreshChallenges();
+
+    const unsubNotif = socketService.onNotificationReceived(() => {
+      refreshChallenges();
+      refreshFriends();
     });
 
-    return () => unsubNotifications();
-  }, [userId]);
+    const unsubInvite = socketService.onGameInvitationReceived(() => {
+      refreshChallenges();
+    });
 
-  // Refresh friends list
-  const refreshFriends = async () => {
-    if (!userId) return;
-    setState((prev) => ({ ...prev, isLoading: true }));
-    try {
-      let friends = (await getFriends(userId)) || [];
-      let pendingRequests = (await getPendingFriendRequests(userId)) || [];
+    const unsubAccepted = socketService.onChallengeAccepted(({ game_id, opponent }) => {
+      refreshChallenges();
+      window.dispatchEvent(
+        new CustomEvent("start-online-game", {
+          detail: {
+            gameId: game_id,
+            color: "white",
+            opponent,
+            opponentName: opponent?.username || "Ami",
+            opponentIsa: opponent?.isa || 1200,
+          },
+        })
+      );
+    });
 
-      // Fallback/merge with server friends for custom user IDs (usr_...)
-      try {
-        const serverFriends = await socketService.getServerFriends(userId);
-        if (serverFriends && Array.isArray(serverFriends)) {
-          const merged = [...friends];
-          serverFriends.forEach((sf: any) => {
-            const friendId = sf.userId === userId ? sf.friendId : sf.userId;
-            if (!merged.some((f) => f.friendId === friendId)) {
-              merged.push({
-                id: sf.id,
-                userId: sf.userId,
-                friendId,
-                status: sf.status,
-                createdAt: sf.createdAt,
-                updatedAt: sf.createdAt,
-              });
-            }
-          });
-          friends = merged;
-        }
-      } catch (e) {
-        console.warn("Server friends fetch fallback:", e);
-      }
+    const unsubRejected = socketService.onChallengeRejected(() => {
+      refreshChallenges();
+    });
 
-      setState((prev) => ({
-        ...prev,
-        friends,
-        pendingFriendRequests: pendingRequests,
-        error: null,
-      }));
-    } catch (error) {
-      console.warn("Could not refresh friends list:", error);
-    } finally {
-      setState((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
-
-  // Refresh challenges
-  const refreshChallenges = async () => {
-    if (!userId) return;
-    setState((prev) => ({ ...prev, isLoading: true }));
-    try {
-      const challenges = (await getPendingChallenges(userId)) || [];
-      setState((prev) => ({
-        ...prev,
-        pendingChallenges: challenges,
-        error: null,
-      }));
-    } catch (error) {
-      console.warn("Could not refresh challenges:", error);
-      setState((prev) => ({ ...prev, pendingChallenges: [] }));
-    } finally {
-      setState((prev) => ({ ...prev, isLoading: false }));
-    }
-  };
+    return () => {
+      unsubNotif?.();
+      unsubInvite?.();
+      unsubAccepted?.();
+      unsubRejected?.();
+    };
+  }, [userId, refreshFriends, refreshChallenges]);
 
   // Send friend request
-  const handleSendFriendRequest = async (
-    targetUserId: string,
-    targetUserName: string
-  ) => {
-    if (!userId) return;
+  const handleSendFriendRequest = async (targetUserId: string, targetUserName: string) => {
     try {
-      // Always add to backend server first
-      try {
-        await socketService.addServerFriend(userId, targetUserId);
-      } catch (serverErr) {
-        console.warn("Backend friend add error:", serverErr);
-      }
-
-      // Try Firestore sync if authenticated
-      if (!userId.startsWith("usr_")) {
-        await sendFriendRequest(userId, targetUserId, targetUserName);
-      }
-
+      await api.sendFriendRequest({ target_user_id: targetUserId });
       await refreshFriends();
-    } catch (error) {
-      console.warn("Friend request fallback applied:", error);
-      // Local optimistic friend record
-      const newFriend: FriendshipRecord = {
-        id: `${userId}_${targetUserId}`,
-        userId,
-        friendId: targetUserId,
-        status: "accepted",
-        createdAt: new Date().toISOString(),
-        updatedAt: new Date().toISOString(),
-      };
+    } catch (error: any) {
       setState((prev) => ({
         ...prev,
-        friends: [...prev.friends.filter((f) => f.friendId !== targetUserId), newFriend],
-        error: null,
+        error: error instanceof Error ? error.message : "Erreur envoi demande d'ami",
       }));
     }
   };
@@ -209,12 +246,12 @@ export function useMultiplayer(
   // Accept friend request
   const handleAcceptFriendRequest = async (friendshipId: string) => {
     try {
-      await acceptFriendRequest(friendshipId);
+      await api.acceptFriendRequest(friendshipId);
       await refreshFriends();
-    } catch (error) {
+    } catch (error: any) {
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error.message : "Erreur inconnue",
+        error: error instanceof Error ? error.message : "Erreur acceptation demande d'ami",
       }));
     }
   };
@@ -222,12 +259,12 @@ export function useMultiplayer(
   // Reject friend request
   const handleRejectFriendRequest = async (friendshipId: string) => {
     try {
-      await rejectFriendRequest(friendshipId);
+      await api.rejectFriendRequest(friendshipId);
       await refreshFriends();
-    } catch (error) {
+    } catch (error: any) {
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error.message : "Erreur inconnue",
+        error: error instanceof Error ? error.message : "Erreur refus demande d'ami",
       }));
     }
   };
@@ -240,61 +277,30 @@ export function useMultiplayer(
     playerColor: "white" | "black" | "random",
     timeControl: number
   ): Promise<string> => {
-    if (!userId) throw new Error("User not logged in");
     try {
-      const challengeId = await createChallenge(
-        userId,
-        state.notifications[0]?.senderName || "Joueur",
-        state.notifications[0]?.senderPhoto || "",
-        friendId,
-        playerColor,
-        timeControl
-      );
+      const res = await api.sendChallenge({
+        target_user_id: friendId,
+        game_type: "friendly",
+        time_control: timeControl,
+      });
       await refreshChallenges();
-      return challengeId;
+      return res.challenge_id || res.id || `ch_${Date.now()}`;
     } catch (error) {
       throw error;
     }
   };
 
   // Accept challenge
-  const handleAcceptChallenge = async (challengeId: string) => {
+  const handleAcceptChallenge = async (challengeId: string): Promise<string> => {
     try {
-      const challenge = state.pendingChallenges.find((c) => c.id === challengeId);
-      if (!challenge) throw new Error("Challenge not found");
-
-      if (!userId) throw new Error("User not logged in");
-
-      // Create game session
-      const playerColor = challenge.playerColor === "random"
-        ? Math.random() > 0.5
-          ? "white"
-          : "black"
-        : challenge.playerColor === "white"
-          ? "black"
-          : "white";
-
-      const gameId = await createGameSession(
-        challenge.playerColor === "white" || (challenge.playerColor === "random" && playerColor === "black")
-          ? challenge.challengerId
-          : userId,
-        challenge.playerColor === "white" || (challenge.playerColor === "random" && playerColor === "black")
-          ? userId
-          : challenge.challengerId,
-        challenge.challengerName,
-        challenge.challengerName, // This should be the current user's name
-        challenge.challengerPhoto,
-        challenge.challengerPhoto, // This should be the current user's photo
-        challenge.timeControl
-      );
-
-      await acceptChallenge(challengeId, gameId);
+      const res = await api.acceptChallenge(challengeId);
+      const gameId = res.game?.id || res.game_id || `game_${Date.now()}`;
       await refreshChallenges();
       return gameId;
     } catch (error) {
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error.message : "Erreur inconnue",
+        error: error instanceof Error ? error.message : "Erreur acceptation du défi",
       }));
       throw error;
     }
@@ -303,12 +309,12 @@ export function useMultiplayer(
   // Reject challenge
   const handleRejectChallenge = async (challengeId: string, reason?: string) => {
     try {
-      await rejectChallenge(challengeId, reason);
+      await api.rejectChallenge(challengeId);
       await refreshChallenges();
-    } catch (error) {
+    } catch (error: any) {
       setState((prev) => ({
         ...prev,
-        error: error instanceof Error ? error.message : "Erreur inconnue",
+        error: error instanceof Error ? error.message : "Erreur refus du défi",
       }));
     }
   };
@@ -321,24 +327,20 @@ export function useMultiplayer(
     playerColor: "white" | "black",
     timeControl: number
   ): Promise<string> => {
-    if (!userId) throw new Error("User not logged in");
     try {
-      const gameId = await createGameSession(
-        playerColor === "white" ? userId : opponentId,
-        playerColor === "white" ? opponentId : userId,
-        playerColor === "white" ? "Vous" : opponentName,
-        playerColor === "white" ? opponentName : "Vous",
-        "",
-        opponentPhoto,
-        timeControl
-      );
-      return gameId;
+      const res = await api.createGame({
+        game_type: "casual",
+        time_control: timeControl,
+        player_black_id: opponentId,
+        player_color: playerColor,
+      });
+      return res.game?.id || `game_${Date.now()}`;
     } catch (error) {
       throw error;
     }
   };
 
-  // Update live game
+  // Update live game (Authoritative local server handles moves via Socket.io)
   const handleUpdateLiveGame = async (
     gameId: string,
     gameState: GameState,
@@ -347,19 +349,7 @@ export function useMultiplayer(
     winner?: string,
     timeRemaining?: { white: number; black: number }
   ) => {
-    try {
-      await updateGameSession(
-        gameId,
-        gameState,
-        gameState.moveHistory,
-        currentPlayer,
-        status,
-        winner,
-        timeRemaining
-      );
-    } catch (error) {
-      console.error("Error updating game session:", error);
-    }
+    // No-op: Local server game state is synced authoritatively via socket make_move and end_turn
   };
 
   // End live game
@@ -368,20 +358,22 @@ export function useMultiplayer(
     winner: "white" | "black" | "draw" | null,
     reason: string
   ) => {
-    try {
-      await endGameSession(gameId, winner, reason);
-    } catch (error) {
-      console.error("Error ending game session:", error);
-    }
+    // No-op: Local server game state handles game over via make_move, resign, or time-out
   };
 
   // Mark notification as read
   const handleMarkNotificationAsRead = async (notificationId: string) => {
-    if (!userId) return;
     try {
-      await markNotificationAsRead(userId, notificationId);
+      await api.markNotificationAsRead(notificationId);
+      setState((prev) => ({
+        ...prev,
+        notifications: prev.notifications.map((n) =>
+          n.id === notificationId ? { ...n, read: true } : n
+        ),
+        pendingChallenges: prev.pendingChallenges.filter((c) => c.id !== notificationId),
+      }));
     } catch (error) {
-      console.error("Error marking notification as read:", error);
+      console.error("Erreur lecture notification:", error);
     }
   };
 

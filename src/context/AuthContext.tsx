@@ -6,8 +6,6 @@
  */
 
 import React, { createContext, useContext, useEffect, useState } from "react";
-import { signInWithPopup, signInWithRedirect, getRedirectResult } from "firebase/auth";
-import { auth, googleProvider } from "../services/firebase/firebase";
 import { GameSettings, GameStats } from "../game/types/gameTypes";
 import { UserProfile } from "../game/types/userTypes";
 import { api } from "../services/api";
@@ -84,29 +82,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     }
   }, [user]);
-
-  // Process Google Sign-In Redirect Result on mount
-  useEffect(() => {
-    getRedirectResult(auth)
-      .then(async (result) => {
-        if (result && result.user && result.user.email) {
-          const res = await api.loginWithGoogle({
-            uid: result.user.uid,
-            email: result.user.email,
-            displayName: result.user.displayName || undefined,
-            photoURL: result.user.photoURL || undefined,
-          });
-          if (res.user) {
-            const norm = normalizeUser(res.user);
-            setUser(norm);
-            localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
-          }
-        }
-      })
-      .catch((err) => {
-        console.warn("Redirect result error:", err);
-      });
-  }, []);
 
   // Load user session on mount
   const refreshProfile = async () => {
@@ -190,53 +165,22 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signInWithGoogle = async () => {
+    // Mode auto-hébergé local : connexion rapide avec profil local
     try {
-      try {
-        const result = await signInWithPopup(auth, googleProvider);
-        const firebaseUser = result.user;
-        if (!firebaseUser || !firebaseUser.email) {
-          throw new Error("Adresse email introuvable dans le compte Google.");
-        }
-
-        const res = await api.loginWithGoogle({
-          uid: firebaseUser.uid,
-          email: firebaseUser.email,
-          displayName: firebaseUser.displayName || undefined,
-          photoURL: firebaseUser.photoURL || undefined,
-        });
-
-        if (res.user) {
-          const norm = normalizeUser(res.user);
-          setUser(norm);
-          localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
-        }
-      } catch (popupErr: any) {
-        // If popup is blocked by third-party cookie/storage partitioning or browser security, fallback automatically to redirect
-        if (
-          popupErr?.code === "auth/popup-blocked" ||
-          popupErr?.code === "auth/internal-error" ||
-          popupErr?.message?.includes("partition")
-        ) {
-          await signInWithRedirect(auth, googleProvider);
-          return;
-        }
-        throw popupErr;
+      const localGuestId = `local_${Date.now()}`;
+      const res = await api.loginWithGoogle({
+        uid: localGuestId,
+        email: `joueur_${localGuestId.substring(6)}@local.server`,
+        displayName: "Joueur Local",
+      });
+      if (res.user) {
+        const norm = normalizeUser(res.user);
+        setUser(norm);
+        localStorage.setItem("fanorona_custom_user", JSON.stringify(norm));
       }
     } catch (err: any) {
-      console.error("[Google Sign-In Error]", err);
-      if (err?.code === "auth/popup-closed-by-user") {
-        throw new Error("Connexion annulée par l'utilisateur.");
-      }
-      if (err?.code === "auth/cancelled-popup-request") {
-        return;
-      }
-      if (err?.code === "auth/unauthorized-domain" || err?.message?.includes("auth/unauthorized-domain")) {
-        const currentDomain = window.location.hostname;
-        throw new Error(
-          `Domaine non autorisé dans Firebase Auth (${currentDomain}). Veuillez ajouter "${currentDomain}" dans la console Firebase -> Authentication -> Paramètres -> Domaines autorisés.`
-        );
-      }
-      throw new Error(err?.message || "Impossible de se connecter avec Google. Veuillez réessayer.");
+      console.error("[Local Sign-In Error]", err);
+      await signInAsGuest();
     }
   };
 

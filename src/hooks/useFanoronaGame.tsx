@@ -4,7 +4,6 @@
  * AI agent, sound synthesizer, and storage service.
  */
 
-import { onAuthStateChanged } from "firebase/auth";
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { chooseBestMove } from "../game/ai/aiPlayer";
 import { isSamePosition } from "../game/board/boardGraph";
@@ -22,12 +21,11 @@ import {
   Position,
 } from "../game/types/gameTypes";
 import { sound } from "../services/audio/soundSynthesizer";
-import { auth } from "../services/firebase/firebase";
 import {
-  loadUserStatsFromFirestore,
-  saveGameRecordToFirestore,
-  syncStatsAndSettingsToFirestore,
-} from "../services/firebase/syncService";
+  loadUserStats,
+  saveGameRecord,
+  syncStatsAndSettings,
+} from "../services/storage/localSyncService";
 import { storageService } from "../services/storage/storageService";
 import { socketService } from "../services/socketService";
 
@@ -67,50 +65,42 @@ export function useFanoronaGameEngine() {
     sound.setSoundEnabled(settings.soundEnabled);
   }, [settings.soundEnabled]);
 
-  // Cloud sync on user login: restore user's stats and preferences from Firestore
+  // Local sync on mount: restore user's stats and preferences
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        try {
-          const cloudData = await loadUserStatsFromFirestore();
-          if (cloudData) {
-            setStats((prev) => {
-              const merged: GameStats = {
-                ...prev,
-                gamesPlayed: Math.max(prev.gamesPlayed, cloudData.gamesPlayed),
-                gamesWon: Math.max(prev.gamesWon, cloudData.gamesWon),
-                gamesLost: Math.max(prev.gamesLost, cloudData.gamesLost),
-                gamesDrawn: Math.max(prev.gamesDrawn, cloudData.gamesDrawn),
-                totalCaptures: Math.max(prev.totalCaptures, cloudData.totalCaptures),
-              };
-              storageService.saveStats(merged);
-              return merged;
-            });
+    loadUserStats()
+      .then((cloudData) => {
+        if (cloudData) {
+          setStats((prev) => {
+            const merged: GameStats = {
+              ...prev,
+              gamesPlayed: Math.max(prev.gamesPlayed, cloudData.gamesPlayed),
+              gamesWon: Math.max(prev.gamesWon, cloudData.gamesWon),
+              gamesLost: Math.max(prev.gamesLost, cloudData.gamesLost),
+              gamesDrawn: Math.max(prev.gamesDrawn, cloudData.gamesDrawn),
+              totalCaptures: Math.max(prev.totalCaptures, cloudData.totalCaptures),
+            };
+            storageService.saveStats(merged);
+            return merged;
+          });
 
-            setSettings((prev) => {
-              const merged: GameSettings = {
-                ...prev,
-                theme: (cloudData.theme as any) || prev.theme,
-                pieceTexture: (cloudData.pieceTexture as any) || prev.pieceTexture,
-                speedModeEnabled: cloudData.speedModeEnabled ?? prev.speedModeEnabled,
-                turnTimeLimit: cloudData.turnTimeLimit || prev.turnTimeLimit,
-                playerNameWhite: cloudData.playerNameWhite || prev.playerNameWhite,
-                playerNameBlack: cloudData.playerNameBlack || prev.playerNameBlack,
-              };
-              storageService.saveSettings(merged);
-              return merged;
-            });
-          } else {
-            // New cloud profile for this user: sync current local stats up to Firestore
-            syncStatsAndSettingsToFirestore(stats, settings).catch(() => {});
-          }
-        } catch (e) {
-          console.warn("Could not load cloud user stats:", e);
+          setSettings((prev) => {
+            const merged: GameSettings = {
+              ...prev,
+              theme: (cloudData.theme as any) || prev.theme,
+              pieceTexture: (cloudData.pieceTexture as any) || prev.pieceTexture,
+              speedModeEnabled: cloudData.speedModeEnabled ?? prev.speedModeEnabled,
+              turnTimeLimit: cloudData.turnTimeLimit || prev.turnTimeLimit,
+              playerNameWhite: cloudData.playerNameWhite || prev.playerNameWhite,
+              playerNameBlack: cloudData.playerNameBlack || prev.playerNameBlack,
+            };
+            storageService.saveSettings(merged);
+            return merged;
+          });
         }
-      }
-    });
-
-    return () => unsubscribe();
+      })
+      .catch((e) => {
+        console.warn("Could not load local user stats:", e);
+      });
   }, []);
 
   // History Manager
@@ -240,9 +230,9 @@ export function useFanoronaGameEngine() {
         };
         storageService.saveStats(next);
 
-        // Persist match and stats to Firestore if signed in
-        syncStatsAndSettingsToFirestore(next, settings).catch(() => {});
-        saveGameRecordToFirestore(gameState, settings.speedModeEnabled).catch(() => {});
+        // Persist match and stats locally
+        syncStatsAndSettings(next, settings).catch(() => {});
+        saveGameRecord(gameState, settings.speedModeEnabled).catch(() => {});
 
         return next;
       });
@@ -272,7 +262,7 @@ export function useFanoronaGameEngine() {
             ...(timeLimit !== undefined && { turnTimeLimit: timeLimit }),
           };
           storageService.saveSettings(updated);
-          syncStatsAndSettingsToFirestore(stats, updated).catch(() => {});
+          syncStatsAndSettings(stats, updated).catch(() => {});
           return updated;
         });
         if (timeLimit !== undefined) {
@@ -661,7 +651,7 @@ export function useFanoronaGameEngine() {
       setSettings((prev) => {
         const updated = { ...prev, ...newSettings };
         storageService.saveSettings(updated);
-        syncStatsAndSettingsToFirestore(stats, updated).catch(() => {});
+        syncStatsAndSettings(stats, updated).catch(() => {});
         return updated;
       });
     },
@@ -673,7 +663,7 @@ export function useFanoronaGameEngine() {
     setSettings((prev) => {
       const updated = { ...prev, speedModeEnabled: !prev.speedModeEnabled };
       storageService.saveSettings(updated);
-      syncStatsAndSettingsToFirestore(stats, updated).catch(() => {});
+      syncStatsAndSettings(stats, updated).catch(() => {});
       return updated;
     });
     sound.playSelect();
@@ -684,7 +674,7 @@ export function useFanoronaGameEngine() {
     setSettings((prev) => {
       const updated = { ...prev, turnTimeLimit: seconds };
       storageService.saveSettings(updated);
-      syncStatsAndSettingsToFirestore(stats, updated).catch(() => {});
+      syncStatsAndSettings(stats, updated).catch(() => {});
       return updated;
     });
     setTimeRemaining(seconds);
