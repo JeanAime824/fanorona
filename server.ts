@@ -424,7 +424,8 @@ seedDefaultData();
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  // Support custom PORT from environment variable (e.g. PORT=9005), defaulting to 3000 in container environment
+  const PORT = process.env.PORT ? parseInt(process.env.PORT, 10) : 3000;
 
   app.use(cors());
   app.use(express.json());
